@@ -26,17 +26,22 @@ lib/
                        No Flutter imports.
     dice_game.dart      DiceGame: round, rollsRemaining, dice, held, hasRolledThisRound;
                        owns a ScoreCard. RNG injected via constructor. No Flutter imports.
-    game_result.dart    GameResult value object (playedAt, totalScore) + JSON.   [pending]
+    game_result.dart    GameResult value object (playedAt, totalScore) + JSON.
   services/
-    game_storage.dart   shared_preferences wrapper: saveResult / loadHistory.    [pending]
+    game_storage.dart   shared_preferences wrapper: saveResult / loadHistory.
   widgets/
-    dice_row.dart        the 5 dice; tap to hold; roll animation.                 [pending]
-    score_card_view.dart 15-row score sheet; preview open rows; tap to commit.    [pending]
-    game_screen.dart     StatefulWidget; owns DiceGame; setState on every action. [pending]
-  main.dart              MaterialApp -> GameScreen.                               [pending]
+    dice_row.dart        the 5 dice; tap to hold; roll animation.
+    score_card_view.dart 15-row score sheet; preview open rows; tap to commit.
+                       Owns categoryLabel().
+    game_screen.dart     StatefulWidget; owns DiceGame; setState on every action.
+  main.dart              DiceZeeApp: light/dark seeded themes -> GameScreen.
 test/
-  score_card_test.dart   every scoring function + ScoreCard instance behavior.
-  dice_game_test.dart    roll / hold / round-advance / game-over logic.
+  score_card_test.dart      every scoring function + ScoreCard instance behavior.
+  dice_game_test.dart       roll / hold / round-advance / game-over logic.
+  game_result_test.dart     JSON round-trip.
+  game_storage_test.dart    save / load / ordering (SharedPreferences mock).
+  widget_test.dart          app boot smoke test.
+  widgets/                   one test file per widget.
 ```
 
 ## State management
