@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/statistics.dart';
 import '../services/game_storage.dart';
+import 'bottom_padding.dart';
 import 'score_table.dart';
 
 /// Aggregate statistics across every stored game.
@@ -49,6 +50,7 @@ class _StatsBody extends StatelessWidget {
     final theme = Theme.of(context);
 
     return ListView(
+      padding: EdgeInsets.only(bottom: BottomPadding.of(context)),
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -76,7 +78,9 @@ class _StatsBody extends StatelessWidget {
             title: Text(categoryLabel(entry.key)),
             trailing: Text(
               '${entry.value}',
-              style: theme.textTheme.bodyLarge,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
       ],

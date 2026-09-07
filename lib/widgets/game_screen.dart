@@ -2,10 +2,12 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../haptics.dart';
 import '../models/dice_game.dart';
 import '../models/game_result.dart';
 import '../models/score_card.dart';
 import '../services/game_storage.dart';
+import 'bottom_padding.dart';
 import 'dice_row.dart';
 import 'score_table.dart';
 
@@ -38,21 +40,27 @@ class _GameScreenState extends State<GameScreen> {
   bool _summaryShown = false;
 
   void _roll() {
+    AppHaptics.roll();
     setState(() {
       _game.roll();
       _rollCount++;
     });
   }
 
-  void _toggleHold(int index) => setState(() => _game.toggleHold(index));
+  void _toggleHold(int index) {
+    AppHaptics.hold();
+    setState(() => _game.toggleHold(index));
+  }
 
   Future<void> _commit(ScoreCategory category) async {
+    AppHaptics.commit();
     setState(() {
       _game.commitScore(category);
       _rollCount++;
     });
     if (_game.isOver && !_summaryShown) {
       _summaryShown = true;
+      AppHaptics.gameOver();
       await widget.storage.saveResult(_buildResult());
       if (mounted) await _showSummary();
     }
@@ -118,6 +126,7 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Dice Zee')),
       body: SingleChildScrollView(
+        padding: EdgeInsets.only(bottom: BottomPadding.of(context)),
         child: Column(
           children: [
             Padding(
