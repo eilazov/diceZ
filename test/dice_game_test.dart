@@ -36,6 +36,7 @@ void main() {
 
     test('gives every player their own empty score card', () {
       final game = DiceGame(playerCount: 4, random: Random(1));
+      expect(game.scoreCards, hasLength(4));
       for (var p = 0; p < 4; p++) {
         expect(game.scoreCardFor(p).isComplete, isFalse);
         expect(game.totalFor(p), 0);

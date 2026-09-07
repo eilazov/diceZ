@@ -7,7 +7,7 @@ import '../models/game_result.dart';
 import '../models/score_card.dart';
 import '../services/game_storage.dart';
 import 'dice_row.dart';
-import 'score_card_view.dart';
+import 'score_table.dart';
 
 /// The playing screen for a 2–4 player hot-seat match. Owns one [DiceGame] and
 /// rebuilds on every action.
@@ -120,12 +120,8 @@ class _GameScreenState extends State<GameScreen> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            _StandingsStrip(
-              standings: _game.standings,
-              currentPlayer: _game.currentPlayer,
-            ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               child: Text(
                 "Player ${_game.currentPlayer + 1}'s turn",
                 style: Theme.of(context).textTheme.titleLarge,
@@ -155,47 +151,15 @@ class _GameScreenState extends State<GameScreen> {
               label: const Text('Roll'),
             ),
             const SizedBox(height: 16),
-            ScoreCardView(
-              card: _game.scoreCardFor(_game.currentPlayer),
+            ScoreTable(
+              cards: _game.scoreCards,
+              currentPlayer: _game.currentPlayer,
               currentDice: _game.dice,
               canCommit: canAct,
               onCommit: _commit,
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StandingsStrip extends StatelessWidget {
-  const _StandingsStrip({required this.standings, required this.currentPlayer});
-
-  final List<int> standings;
-  final int currentPlayer;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      child: Row(
-        children: [
-          for (var p = 0; p < standings.length; p++)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Chip(
-                label: Text('P${p + 1}  ${standings[p]}'),
-                backgroundColor:
-                    p == currentPlayer ? scheme.primaryContainer : null,
-                side: p == currentPlayer
-                    ? BorderSide(color: scheme.primary)
-                    : null,
-              ),
-            ),
-        ],
       ),
     );
   }

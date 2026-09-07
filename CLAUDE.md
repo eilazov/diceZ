@@ -41,11 +41,12 @@ lib/
                        (skips unparseable legacy entries).
   widgets/
     main_menu.dart       MainMenuScreen: 2/3/4-player buttons + Statistics.
-    game_screen.dart     StatefulWidget; owns DiceGame; turn banner, standings
-                       strip, end-of-match summary + save. setState on every action.
+    game_screen.dart     StatefulWidget; owns DiceGame; turn banner, dice, Roll,
+                       shared ScoreTable, end-of-match summary + save.
     dice_row.dart        the 5 dice; tap to hold; roll animation.
-    score_card_view.dart 15-row score sheet; preview open rows; tap to commit.
-                       Owns categoryLabel().
+    score_table.dart     one shared table: 15 category rows + totals row,
+                       one column per player; active column previews + commits.
+                       Owns categoryLabel() (full) + categoryShortLabel().
     statistics_screen.dart  FutureBuilder over history -> Statistics table.
   main.dart              DiceZeeApp: light/dark seeded themes -> MainMenuScreen.
 test/
@@ -63,7 +64,7 @@ test/
 
 Plain `StatefulWidget` + `setState`. `GameScreen` holds one `DiceGame` and rebuilds
 on roll, hold-toggle, and commit; `StatisticsScreen` holds a `Future`. `DiceRow`,
-`ScoreCardView`, `MainMenuScreen` are stateless, taking data + callbacks. No
+`ScoreTable`, `MainMenuScreen` are stateless, taking data + callbacks. No
 Provider / Riverpod / Bloc / InheritedWidget.
 
 Navigation is plain `Navigator.push(MaterialPageRoute(...))` from the menu — no

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/statistics.dart';
 import '../services/game_storage.dart';
-import 'score_card_view.dart';
+import 'score_table.dart';
 
 /// Aggregate statistics across every stored game.
 class StatisticsScreen extends StatefulWidget {

@@ -36,15 +36,10 @@ void main() {
     expect(find.text('Rolls left: 3'), findsOneWidget);
   });
 
-  testWidgets('the score card is inert until the first roll', (tester) async {
+  testWidgets('no category is committable until the first roll', (tester) async {
     await tester.pumpWidget(subject());
 
-    await tester.tap(
-      find.byKey(const ValueKey('category_chance')),
-      warnIfMissed: false,
-    );
-    await tester.pump();
-
+    expect(find.byKey(const ValueKey('commit_chance')), findsNothing);
     expect(find.text("Player 1's turn"), findsOneWidget);
   });
 
@@ -62,7 +57,7 @@ void main() {
 
     await tester.tap(find.widgetWithText(FilledButton, 'Roll'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('category_chance')));
+    await tester.tap(find.byKey(const ValueKey('commit_chance')));
     await tester.pumpAndSettle();
 
     expect(find.text("Player 2's turn"), findsOneWidget);
@@ -70,16 +65,24 @@ void main() {
     expect(find.text('Rolls left: 3'), findsOneWidget);
   });
 
+  testWidgets('every player total is visible in the shared table',
+      (tester) async {
+    await pumpTall(tester, playerCount: 3);
+
+    expect(find.byKey(const ValueKey('total_0')), findsOneWidget);
+    expect(find.byKey(const ValueKey('total_1')), findsOneWidget);
+    expect(find.byKey(const ValueKey('total_2')), findsOneWidget);
+  });
+
   testWidgets('finishing the match saves a result and shows the summary',
       (tester) async {
     await pumpTall(tester);
 
-    for (var round = 0; round < ScoreCategory.values.length; round++) {
-      final category = ScoreCategory.values[round];
+    for (final category in ScoreCategory.values) {
       for (var player = 0; player < 2; player++) {
         await tester.tap(find.widgetWithText(FilledButton, 'Roll'));
         await tester.pumpAndSettle();
-        await tester.tap(find.byKey(ValueKey('category_${category.name}')));
+        await tester.tap(find.byKey(ValueKey('commit_${category.name}')));
         await tester.pumpAndSettle();
       }
     }

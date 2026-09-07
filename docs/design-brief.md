@@ -14,8 +14,10 @@ screen and what it does*, not how it should look.
 ## 1. What the app is
 
 - **Dice Zee** is a personal-use, Yatzy/Yahtzee-style dice game.
-- **Players:** 2–4, **hot-seat on one device** — people physically pass the phone
-  around. No online play, no accounts, no network of any kind.
+- **Players:** 2–4, **simple hot-seat pass-and-play on one device** — people
+  physically pass the phone around. **One shared score table** shows every
+  player's scores at once (like a paper Yahtzee sheet). No online play, no
+  accounts, no network of any kind.
 - **Platform:** Flutter, phone form factor, portrait. Runs on iOS and Android;
   distributed by personal sideload only (not the App Store / Play Store).
 - **Audience:** the owner and friends/family, playing casually. It replaces a
@@ -142,18 +144,13 @@ App bar: title **"Dice Zee"**, back arrow.
 
 Body (currently one vertical `SingleChildScrollView` column), top to bottom:
 
-1. **Standings strip** — a horizontally scrolling row of chips, one per player:
-   `P1  0`, `P2  0`, … Each chip shows the seat label and that player's running
-   grand total. The **current player's chip is highlighted** (filled background +
-   outline). This is the only place you see everyone's totals at once.
-
-2. **Turn banner** — **"Player N's turn"** (large text, `titleLarge`). The
+1. **Turn banner** — **"Player N's turn"** (large text, `titleLarge`). The
    handoff cue when the phone is passed.
 
-3. **Status row** — left: **"Round N / 15"**, right: **"Rolls left: M"**
+2. **Status row** — left: **"Round N / 15"**, right: **"Rolls left: M"**
    (M counts down 3 → 2 → 1 → 0 within a turn).
 
-4. **Dice row** — the **5 dice**, centered, ~56pt squares with pip faces.
+3. **Dice row** — the **5 dice**, centered, ~56pt squares with pip faces.
    - Before the first roll of a turn: dice show a placeholder face (all 1s),
      not interactive.
    - After a roll: each die is tappable to **hold / release**. A held die is
@@ -162,72 +159,85 @@ Body (currently one vertical `SingleChildScrollView` column), top to bottom:
    - On each roll, the un-held dice play a short scale + slight-rotation tween
      (~250 ms). This is the only animation in the app and is deliberately minimal.
 
-5. **Roll button** — a filled button with a dice icon, label **"Roll"**.
+4. **Roll button** — a filled button with a dice icon, label **"Roll"**.
    - Enabled when the player has rolls left and the match isn't over.
    - Disabled (greyed) at 0 rolls left, or once the match is over.
    - The label does not currently show the count (the status row does).
 
-6. **Score card** (`ScoreCardView`) — the current player's 15-row sheet, then a
-   **Total** row. Described in 4.3.
+5. **Shared score table** (`ScoreTable`) — one table, all players. Described in
+   4.3. This is both the scoreboard (everyone sees everyone's scores and totals)
+   and the way the active player commits their turn.
 
 **Turn/commit interaction:**
-- Until the player has rolled at least once, every score row is inert and shows a
-  dash `–` on the right.
-- After rolling, every **still-open** row shows a **greyed preview number** on the
-  right = what the current dice would score in that category (including `0`).
-  Tapping an open row **commits** that score, locks the row, and passes the turn.
-- **Filled** rows show their locked score in normal (non-grey) text, label
-  slightly bolder, and are not tappable.
+- The active player's **column** is highlighted. Only cells in that column are
+  interactive, and only on the active player's turn.
+- Until they have rolled at least once this turn, no cell is interactive.
+- After rolling, each **still-open cell in the active player's column** shows a
+  **greyed preview number** = what the current dice would score there (including
+  `0`). Tapping it **commits** that score, locks the cell, and passes the turn.
+- All other cells are read-only: filled cells show their locked score, empty
+  cells are blank.
 
-**End of match:** when the last category is committed, the app saves the result
-and shows the **"Game over" dialog** (4.4).
+**End of match:** when the last cell is committed, the app saves the result and
+shows the **"Game over" dialog** (4.4).
 
 **Known gaps / redesign opportunities:**
 - **No "pass the phone to Player N" moment.** The turn just changes. A deliberate
   handoff/confirm screen ("Player 3, ready?") would prevent the next player
   seeing the previous player's final dice and mis-tapping, and is a natural place
   for personality.
-- **You can only see the current player's full card.** Others are just a total in
-  the strip. There's no way to review an opponent's category choices mid-game.
-- The three stacked text blocks (standings, turn banner, round/rolls) have no
-  hierarchy — a redesign should make "whose turn + how many rolls left" instantly
-  scannable and push the rest down in priority.
+- The stacked text blocks (turn banner, round/rolls) have little hierarchy — a
+  redesign should make "whose turn + how many rolls left" instantly scannable.
 - Dice, hold state, and the Roll button are the tactile core and currently look
   like grey rounded rectangles.
-- The score card is 15 rows + total = a long scroll under the dice; the whole
-  screen scrolls as one. Consider a fixed dice/controls area with only the card
-  scrolling, or grouping the card (upper numbers vs combinations).
-- No indication on the dice area of *which* player is rolling (only the text
-  banner). Colour-coding seats (P1..P4) could carry through dice, chips, banner.
+- The screen scrolls as one long column (dice + controls + 16-row table). Consider
+  a fixed dice/controls area with only the table scrolling, and/or grouping the
+  table (upper number categories vs. combinations).
+- The table's active-column highlight is a faint tint; the "preview vs locked
+  vs empty" cell states are carried only by text colour. All of this needs
+  stronger, more legible treatment — this table is the core surface.
+- No seat identity beyond "P1".."P4" text. Per-seat colour could carry through
+  the dice area, turn banner, and the table's active column and header.
+- With 4 players the table is dense on a phone; category labels are abbreviated
+  to fit (see 4.3). The redesign owns making 4 columns + labels comfortably
+  readable at arm's length.
 
 ---
 
-### 4.3 Score card (`ScoreCardView`, used inside Game Screen)
+### 4.3 Shared score table (`ScoreTable`, used inside Game Screen)
 
-A `Column` of 15 rows plus a footer, no header row.
+One table. **Rows = the 15 categories + a Totals row. Columns = the players
+(2–4).** It is the whole scoreboard: every player's filled scores and running
+total are always on screen.
 
-Each **category row**: full-width, ~16pt horizontal / 12pt vertical padding, a
-hairline bottom divider. Left = category label, right = value cell. Row states:
+- **Header row:** an empty first cell, then **"P1" … "P4"**. The active player's
+  header is bold and its whole column carries a faint highlight tint.
+- **First column:** the category label (abbreviated — see below), left-aligned.
+- **Score cells:** centred. Three states:
 
-| State | When | Left | Right cell | Tappable |
-|---|---|---|---|---|
-| Inert | player hasn't rolled yet this turn | label, normal weight | `–` (muted) | no |
-| Open + preview | rolled, category still free | label, normal weight | preview score, **muted/grey** | **yes → commits** |
-| Filled | category already scored | label, **semibold** | locked score, normal colour | no |
+  | Cell state | When | Shows | Tappable |
+  |---|---|---|---|
+  | Empty | category not yet scored by that player | blank | no |
+  | Preview | that player is active, has rolled, category still open | preview score (incl. `0`), **muted/grey** | **yes → commits, passes turn** |
+  | Locked | category already scored by that player | the score, normal colour | no |
 
-Category labels, in display order: **Ones, Twos, Threes, Fours, Fives, Sixes,
-One pair, Two pairs, Three of a kind, Four of a kind, Full house, Small straight,
-Large straight, Dice Zee, Chance.**
+  Only the **active player's column** ever has Preview cells; every other cell is
+  Empty or Locked and read-only.
+- **Totals row:** first cell **"Total"**, then each player's grand total; the
+  active player's total is in the highlighted column.
 
-Footer: a divider, then a **"Total"** row (label left, grand total right, both
-`titleMedium`).
+**Abbreviated category labels** (to fit up to 4 columns on a phone without
+horizontal scrolling): Ones, Twos, Threes, Fours, Fives, Sixes, **1 pair**,
+**2 pairs**, **3 of a kind**, **4 of a kind**, Full house, **Sm straight**,
+**Lg straight**, Dice Zee, Chance. (The Statistics screen still uses the full
+names — "One pair", "Small straight", etc.)
 
-**Redesign opportunities:** there's no visual grouping between the six
-number categories and the nine combination categories; no icons or dice-glyph
-hints for what each combination means (a designer could add tiny dice diagrams
-for straights / full house / pairs); the "preview vs locked" distinction is
-carried only by text colour and weight and is easy to miss; the commit action
-(tap a whole row) has no affordance suggesting it's a button.
+**Redesign opportunities:** the current version is a bare Material `Table` — thin
+tint for the active column, text-colour-only cell states, no grouping between the
+six number categories and the nine combinations, no dice-glyph hints for what
+"Full house" / straights / pairs mean, no affordance that a preview cell is a
+button. With 4 players the columns are ~50pt wide. This table is where the game
+is read and played — it deserves the most design attention.
 
 ---
 
@@ -286,20 +296,20 @@ compact grid with dice glyphs; the empty state needs art + a "Start a game" CTA.
 
 **Roll button:** enabled / disabled.
 
-**Standings chip** (2–4 shown): current player vs other player; shows seat label +
-running total.
-
-**Score row:** inert / open-with-preview (tappable) / filled-locked. (See 4.3.)
+**Score table** (see 4.3): per-player columns with an active-column highlight;
+score cells in one of three states — empty / preview (tappable, active column
+only) / locked; a totals row.
 
 **Turn banner:** shows current seat; changes on every commit.
 
 **Screens with an empty/loading state:** Statistics (loading spinner, "no games"
 empty state).
 
-**Seats:** always referred to as **"Player 1" … "Player 4"** — no names, no
-avatars, no colours currently. Introducing a per-seat colour/identity is a
-reasonable redesign move and would touch: standings chips, turn banner, game-over
-standings, and potentially the dice/score-card while that player is active.
+**Seats:** always referred to as **"Player 1" … "Player 4"** (**"P1"–"P4"** in the
+table header) — no names, no avatars, no colours currently. Introducing a per-seat
+colour/identity is a reasonable redesign move and would touch: the score table's
+header + active column, the turn banner, the game-over standings, and potentially
+the dice while that player is active.
 
 ---
 
@@ -309,15 +319,17 @@ standings, and potentially the dice/score-card while that player is active.
 - Menu: **"Dice Zee"**, **"New game"**, **"2 Players"**, **"3 Players"**,
   **"4 Players"**, **"Statistics"**
 - Game Screen: **"Player N's turn"**, **"Round N / 15"**, **"Rolls left: M"**,
-  **"Roll"**, **"Total"**, row dash **"–"**
-- Category labels: **Ones, Twos, Threes, Fours, Fives, Sixes, One pair,
-  Two pairs, Three of a kind, Four of a kind, Full house, Small straight,
-  Large straight, Dice Zee, Chance**
-- Standings chip: **"P1  <n>"** … **"P4  <n>"**
+  **"Roll"**
+- Score table headers: **"P1" … "P4"**; totals row label **"Total"**
+- Score table category labels (abbreviated): **Ones, Twos, Threes, Fours, Fives,
+  Sixes, 1 pair, 2 pairs, 3 of a kind, 4 of a kind, Full house, Sm straight,
+  Lg straight, Dice Zee, Chance**
 - Game over dialog: **"Game over"**, **"Player N wins!"**, **"It's a tie!"**,
   **"Player N: <total>"**, **"Back to menu"**
 - Statistics: **"Statistics"**, **"No games played yet."**, **"Games played: N"**,
-  **"Average score: X.X"**, **"Best ever by category"**, category labels as above
+  **"Average score: X.X"**, **"Best ever by category"**, then the **full**
+  category labels: **Ones … Sixes, One pair, Two pairs, Three of a kind,
+  Four of a kind, Full house, Small straight, Large straight, Dice Zee, Chance**
 
 ---
 

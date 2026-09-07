@@ -50,6 +50,9 @@ class DiceGame {
   /// The score card belonging to [player].
   ScoreCard scoreCardFor(int player) => _cards[player];
 
+  /// Every player's score card, in seat order. Unmodifiable.
+  List<ScoreCard> get scoreCards => List.unmodifiable(_cards);
+
   /// [player]'s current total.
   int totalFor(int player) => _cards[player].total;
 

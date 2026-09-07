@@ -14,7 +14,8 @@ menu, plus an aggregate statistics screen.
 - No 1-player mode and no bot/AI opponent (dropped from an earlier draft).
 - No network / online play. Hot-seat pass-and-play on one device.
 - No player name entry — seats are "Player 1".."Player 4".
-- No mid-game view of other players' full score cards (possible follow-up).
+- Every player's scores are visible in one shared table at all times (revised
+  from an earlier "current player's card only" draft).
 - No routing package — plain `Navigator` + `MaterialPageRoute`.
 - Stats are aggregates only: no per-seat win tallies, no vs-bot record,
   no recent-games list.
@@ -128,11 +129,15 @@ pushes `GameScreen(playerCount: n)`. "Statistics" pushes `StatisticsScreen`.
 ### `game_screen.dart` — `GameScreen({required int playerCount, GameStorage storage, Random? random})`
 
 - App bar: title, no history icon (stats live on the menu now).
-- Turn banner: "Player N's turn".
-- Standings strip: one chip per player showing seat + running total, current
-  player highlighted.
+- Turn banner: "Player N's turn"; status row "Round N / 15" + "Rolls left: M".
 - `DiceRow` and the Roll button as today, acting on the current turn.
-- `ScoreCardView` bound to `game.scoreCardFor(game.currentPlayer)`.
+- **One shared `ScoreTable`** (`score_table.dart`) bound to `game.scoreCards`:
+  rows = the 15 categories + a totals row, columns = the players. Every player's
+  locked scores and running total are always visible. The active player's column
+  is highlighted; while `canCommit`, its still-open cells preview
+  `ScoreCard.score(category, dice)` and commit on tap. All other cells are
+  read-only. Category labels are abbreviated (`categoryShortLabel`) so 4 columns
+  fit a phone without horizontal scrolling. There is no separate standings strip.
 - On `isOver`: build a `GameResult` from every player's card, `saveResult`, then a
   summary dialog — final standings, the winning seat (or "Tie"), and a
   "Back to menu" action that pops to the menu.
