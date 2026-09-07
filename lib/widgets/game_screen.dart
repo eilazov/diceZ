@@ -9,17 +9,20 @@ import '../services/game_storage.dart';
 import 'dice_row.dart';
 import 'score_card_view.dart';
 
-/// The single stateful screen. Owns one [DiceGame] and rebuilds on every action.
+/// The playing screen for a 2–4 player hot-seat match. Owns one [DiceGame] and
+/// rebuilds on every action.
 class GameScreen extends StatefulWidget {
   const GameScreen({
     super.key,
+    required this.playerCount,
     this.storage = const GameStorage(),
     this.random,
   });
 
+  final int playerCount;
   final GameStorage storage;
 
-  /// Seed source for the game's dice; injected in tests for determinism.
+  /// Seed source for the dice; injected in tests for determinism.
   final Random? random;
 
   @override
@@ -27,7 +30,10 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  late DiceGame _game = DiceGame(random: widget.random);
+  late final DiceGame _game = DiceGame(
+    playerCount: widget.playerCount,
+    random: widget.random,
+  );
   int _rollCount = 0;
   bool _summaryShown = false;
 
@@ -41,136 +47,104 @@ class _GameScreenState extends State<GameScreen> {
   void _toggleHold(int index) => setState(() => _game.toggleHold(index));
 
   Future<void> _commit(ScoreCategory category) async {
-    setState(() => _game.commitScore(category));
+    setState(() {
+      _game.commitScore(category);
+      _rollCount++;
+    });
     if (_game.isOver && !_summaryShown) {
       _summaryShown = true;
-      await widget.storage.saveResult(
-        GameResult(playedAt: DateTime.now(), totalScore: _game.scoreCard.total),
-      );
+      await widget.storage.saveResult(_buildResult());
       if (mounted) await _showSummary();
     }
   }
 
+  GameResult _buildResult() => GameResult(
+        playedAt: DateTime.now(),
+        playerCount: _game.playerCount,
+        players: [
+          for (var p = 0; p < _game.playerCount; p++)
+            PlayerScore(categoryScores: {
+              for (final c in ScoreCategory.values)
+                c: _game.scoreCardFor(p).scoreOf(c) ?? 0,
+            }),
+        ],
+      );
+
   Future<void> _showSummary() async {
-    final history = await widget.storage.loadHistory();
-    final best = history.isEmpty
-        ? _game.scoreCard.total
-        : history.map((r) => r.totalScore).reduce(max);
-    if (!mounted) return;
+    final standings = _game.standings;
+    final ranking = List.generate(_game.playerCount, (p) => p)
+      ..sort((a, b) => standings[b].compareTo(standings[a]));
+    final winner = _game.winner;
 
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Game over'),
-        content: Text(
-          'You scored ${_game.scoreCard.total}.\nBest so far: $best.',
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              winner == null ? "It's a tie!" : 'Player ${winner + 1} wins!',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 12),
+            for (final p in ranking)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Text('Player ${p + 1}: ${standings[p]}'),
+              ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              _newGame();
+              Navigator.of(context).pop(); // dialog
+              Navigator.of(context).pop(); // back to menu
             },
-            child: const Text('New game'),
+            child: const Text('Back to menu'),
           ),
         ],
       ),
     );
-  }
-
-  void _newGame() {
-    setState(() {
-      _game = DiceGame(random: widget.random);
-      _rollCount = 0;
-      _summaryShown = false;
-    });
-  }
-
-  Future<void> _showHistory() async {
-    final history = await widget.storage.loadHistory();
-    if (!mounted) return;
-    final best = history.isEmpty
-        ? 0
-        : history.map((r) => r.totalScore).reduce(max);
-
-    await showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('History'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: history.isEmpty
-              ? const Text('No games played yet.')
-              : ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final r in history)
-                      ListTile(
-                        dense: true,
-                        leading: Text('${r.totalScore}'),
-                        title: Text(_formatDate(r.playedAt)),
-                        trailing: r.totalScore == best
-                            ? const Icon(Icons.star, size: 18)
-                            : null,
-                      ),
-                  ],
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static String _formatDate(DateTime d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${d.year}-${two(d.month)}-${two(d.day)} ${two(d.hour)}:${two(d.minute)}';
   }
 
   @override
   Widget build(BuildContext context) {
     final canRoll = _game.rollsRemaining > 0 && !_game.isOver;
+    final canAct = _game.hasRolledThisRound && !_game.isOver;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dice Zee'),
-        actions: [
-          IconButton(
-            onPressed: _showHistory,
-            icon: const Icon(Icons.history),
-            tooltip: 'History',
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Dice Zee')),
       body: SingleChildScrollView(
         child: Column(
           children: [
+            _StandingsStrip(
+              standings: _game.standings,
+              currentPlayer: _game.currentPlayer,
+            ),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Text(
+                "Player ${_game.currentPlayer + 1}'s turn",
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Round ${_game.round.clamp(1, 15)} / 15',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  Text(
-                    'Rolls left: ${_game.rollsRemaining}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text('Round ${_game.round.clamp(1, 15)} / 15'),
+                  Text('Rolls left: ${_game.rollsRemaining}'),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
             DiceRow(
               dice: _game.dice,
               held: _game.held,
-              canHold: _game.hasRolledThisRound && !_game.isOver,
+              canHold: canAct,
               rollCount: _rollCount,
               onToggleHold: _toggleHold,
             ),
@@ -182,13 +156,46 @@ class _GameScreenState extends State<GameScreen> {
             ),
             const SizedBox(height: 16),
             ScoreCardView(
-              card: _game.scoreCard,
+              card: _game.scoreCardFor(_game.currentPlayer),
               currentDice: _game.dice,
-              canCommit: _game.hasRolledThisRound && !_game.isOver,
+              canCommit: canAct,
               onCommit: _commit,
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StandingsStrip extends StatelessWidget {
+  const _StandingsStrip({required this.standings, required this.currentPlayer});
+
+  final List<int> standings;
+  final int currentPlayer;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Row(
+        children: [
+          for (var p = 0; p < standings.length; p++)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Chip(
+                label: Text('P${p + 1}  ${standings[p]}'),
+                backgroundColor:
+                    p == currentPlayer ? scheme.primaryContainer : null,
+                side: p == currentPlayer
+                    ? BorderSide(color: scheme.primary)
+                    : null,
+              ),
+            ),
+        ],
       ),
     );
   }

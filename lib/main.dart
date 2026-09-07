@@ -24,7 +24,8 @@ class DiceZeeApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const GameScreen(),
+      // TODO(task 8): replace with MainMenuScreen once the menu lands.
+      home: const GameScreen(playerCount: 2),
     );
   }
 }

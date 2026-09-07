@@ -19,9 +19,20 @@ class GameStorage {
     if (raw == null || raw.isEmpty) return [];
 
     final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .map((e) => GameResult.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return [
+      for (final entry in decoded)
+        if (_tryParse(entry) case final GameResult result) result,
+    ];
+  }
+
+  /// Parse one stored entry, or null if it is not a current-shape [GameResult]
+  /// (e.g. a record written by an older version).
+  static GameResult? _tryParse(dynamic entry) {
+    try {
+      return GameResult.fromJson(entry as Map<String, dynamic>);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Prepend [result] to the history and persist.
