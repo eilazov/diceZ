@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'game_screen.dart';
 import 'statistics_screen.dart';
+import 'version_indicator.dart';
 
 /// App home: start a 2–4 player game or view statistics.
 class MainMenuScreen extends StatelessWidget {
@@ -58,6 +59,8 @@ class MainMenuScreen extends StatelessWidget {
                     icon: const Icon(Icons.bar_chart),
                     label: const Text('Statistics'),
                   ),
+                  const SizedBox(height: 24),
+                  const VersionIndicator(),
                 ],
               ),
             ),

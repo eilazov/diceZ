@@ -62,6 +62,7 @@ class _Die extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: TweenAnimationBuilder<double>(
         key: ValueKey(animateKey),

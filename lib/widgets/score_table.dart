@@ -115,7 +115,12 @@ class ScoreTable extends StatelessWidget {
       return _Cell(
         key: ValueKey('cell_${player}_${category.name}'),
         highlight: isCurrent,
-        child: Text('${card.scoreOf(category)}', style: theme.textTheme.bodyMedium),
+        child: Text(
+          '${card.scoreOf(category)}',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
       );
     }
 
@@ -126,7 +131,10 @@ class ScoreTable extends StatelessWidget {
         onTap: () => onCommit(category),
         child: Text(
           '${ScoreCard.score(category, currentDice)}',
-          style: theme.textTheme.bodyMedium?.copyWith(color: theme.disabledColor),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.disabledColor,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
       );
     }
@@ -156,7 +164,9 @@ class ScoreTable extends StatelessWidget {
             highlight: p == currentPlayer,
             child: Text(
               '${cards[p].total}',
-              style: theme.textTheme.titleSmall,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
             ),
           ),
       ],
