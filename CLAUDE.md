@@ -3,58 +3,78 @@
 Personal-use Yatzy-style dice game. Flutter, targeting iOS + Android by sideload
 only — no App Store / Play Store release.
 
-Design spec: [docs/superpowers/specs/2026-09-07-dice-zee-design.md](docs/superpowers/specs/2026-09-07-dice-zee-design.md)
+Design specs (newest last):
+- [docs/superpowers/specs/2026-09-07-dice-zee-design.md](docs/superpowers/specs/2026-09-07-dice-zee-design.md) — core single-player game
+- [docs/superpowers/specs/2026-09-07-multiplayer-and-menu-design.md](docs/superpowers/specs/2026-09-07-multiplayer-and-menu-design.md) — 2–4 players, menu, statistics
 
 ## Gameplay
 
-One player, 15 rounds. Each round: up to 3 rolls of 5 dice, holding any dice
-between rolls, then commit the result to one of the 15 score categories. Game
-ends when all categories are filled; the total is saved to local history.
+2–4 players, hot-seat on one device. A match is 15 rounds. On a player's turn they
+roll up to 3 times (holding any dice between rolls), then commit the dice to one
+of their 15 still-open categories; the device then passes to the next player. The
+match ends when every player has filled all 15 categories. Highest total wins
+(a shared top total is a tie). Each finished match is saved to local history.
 
 15 categories: ones–sixes, one pair, two pairs, three of a kind, four of a kind,
-full house (25), small straight (30), large straight (40), yahtzee (100), chance.
-No upper-section bonus, no bonus-yahtzee, no joker rules. Full scoring table is in
-the design spec.
+full house (25), small straight (30), large straight (40), Dice Zee / yahtzee
+(100), chance. No upper-section bonus, no bonus-yahtzee, no joker rules. Full
+scoring table is in the core design spec.
+
+There is no single-player or bot mode.
 
 ## Project structure
 
 ```
 lib/
-  models/
+  models/            (plain Dart, no package:flutter import, unit-tested directly)
     score_card.dart    ScoreCategory enum + ScoreCard: pure static score(), plus
                        committed-score state (commit / isFilled / total / isComplete).
-                       No Flutter imports.
-    dice_game.dart      DiceGame: round, rollsRemaining, dice, held, hasRolledThisRound;
-                       owns a ScoreCard. RNG injected via constructor. No Flutter imports.
-    game_result.dart    GameResult value object (playedAt, totalScore) + JSON.
+    dice_game.dart      DiceGame: a 2–4 player match. currentPlayer, round, per-turn
+                       dice/held/rolls, one ScoreCard per seat, standings, winner.
+                       Injectable RNG.
+    game_result.dart    GameResult (playedAt, playerCount, List<PlayerScore>) +
+                       PlayerScore (per-category map, total) + JSON.
+    statistics.dart     Statistics.from(history): gamesPlayed, averageScore,
+                       bestByCategory.
   services/
-    game_storage.dart   shared_preferences wrapper: saveResult / loadHistory.
+    game_storage.dart   shared_preferences wrapper: saveResult / loadHistory
+                       (skips unparseable legacy entries).
   widgets/
+    main_menu.dart       MainMenuScreen: 2/3/4-player buttons + Statistics.
+    game_screen.dart     StatefulWidget; owns DiceGame; turn banner, standings
+                       strip, end-of-match summary + save. setState on every action.
     dice_row.dart        the 5 dice; tap to hold; roll animation.
     score_card_view.dart 15-row score sheet; preview open rows; tap to commit.
                        Owns categoryLabel().
-    game_screen.dart     StatefulWidget; owns DiceGame; setState on every action.
-  main.dart              DiceZeeApp: light/dark seeded themes -> GameScreen.
+    statistics_screen.dart  FutureBuilder over history -> Statistics table.
+  main.dart              DiceZeeApp: light/dark seeded themes -> MainMenuScreen.
 test/
   score_card_test.dart      every scoring function + ScoreCard instance behavior.
-  dice_game_test.dart       roll / hold / round-advance / game-over logic.
-  game_result_test.dart     JSON round-trip.
-  game_storage_test.dart    save / load / ordering (SharedPreferences mock).
-  widget_test.dart          app boot smoke test.
+  dice_game_test.dart       construction, roll / hold, turn + round advancement,
+                            standings, winner.
+  game_result_test.dart     PlayerScore / GameResult JSON round-trips.
+  statistics_test.dart      aggregates, including the empty-history case.
+  game_storage_test.dart    save / load / ordering / legacy-skip (prefs mock).
+  widget_test.dart          app boots to the menu.
   widgets/                   one test file per widget.
 ```
 
-## State management
+## State management & navigation
 
-Plain `StatefulWidget` + `setState`. `GameScreen` is the only stateful widget: it
-holds one `DiceGame` and rebuilds on roll, hold-toggle, and commit. Child widgets
-(`DiceRow`, `ScoreCardView`) are stateless and take data + callbacks. No Provider /
-Riverpod / Bloc / InheritedWidget. Revisit only if prop-drilling becomes painful.
+Plain `StatefulWidget` + `setState`. `GameScreen` holds one `DiceGame` and rebuilds
+on roll, hold-toggle, and commit; `StatisticsScreen` holds a `Future`. `DiceRow`,
+`ScoreCardView`, `MainMenuScreen` are stateless, taking data + callbacks. No
+Provider / Riverpod / Bloc / InheritedWidget.
+
+Navigation is plain `Navigator.push(MaterialPageRoute(...))` from the menu — no
+routing package.
 
 ## Persistence
 
-`shared_preferences` only — a single JSON key holding the list of `GameResult`s.
-High scores are derived from that list, not stored separately.
+`shared_preferences` only — a single JSON key (`dice_zee.history`) holding a list
+of `GameResult`. `loadHistory` silently drops entries it can't parse, so a schema
+change doesn't need a migration for this personal app. Statistics are derived from
+that list, not stored separately.
 
 ## Dependencies
 
