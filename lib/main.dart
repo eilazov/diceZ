@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'widgets/game_screen.dart';
+import 'widgets/main_menu.dart';
 
 void main() => runApp(const DiceZeeApp());
 
@@ -9,7 +9,7 @@ class DiceZeeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final seed = Colors.indigo;
+    const seed = Colors.indigo;
     return MaterialApp(
       title: 'Dice Zee',
       debugShowCheckedModeBanner: false,
@@ -24,8 +24,7 @@ class DiceZeeApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      // TODO(task 8): replace with MainMenuScreen once the menu lands.
-      home: const GameScreen(playerCount: 2),
+      home: const MainMenuScreen(),
     );
   }
 }
