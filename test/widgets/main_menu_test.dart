@@ -11,19 +11,24 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('offers 2, 3 and 4 player games', (tester) async {
+  testWidgets('offers a 2, 3 and 4 player choice', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
+    await tester.pumpAndSettle();
 
-    expect(find.text('2 Players'), findsOneWidget);
-    expect(find.text('3 Players'), findsOneWidget);
-    expect(find.text('4 Players'), findsOneWidget);
+    expect(find.widgetWithText(SegmentedButton<int>, '2'), findsOneWidget);
+    expect(find.text('3'), findsOneWidget);
+    expect(find.text('4'), findsOneWidget);
+    expect(find.byKey(const ValueKey('start_button')), findsOneWidget);
   });
 
   testWidgets('starting a 3 player game opens the game screen for 3',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
+    await tester.pumpAndSettle();
 
-    await tester.tap(find.text('3 Players'));
+    await tester.tap(find.text('3'));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('start_button')));
     await tester.pumpAndSettle();
 
     final screen = tester.widget<GameScreen>(find.byType(GameScreen));
@@ -33,6 +38,7 @@ void main() {
   testWidgets('the statistics button opens the statistics screen',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Statistics'));
     await tester.pumpAndSettle();

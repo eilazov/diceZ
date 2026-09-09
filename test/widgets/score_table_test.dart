@@ -63,6 +63,7 @@ void main() {
       findsOneWidget,
     );
 
+    await tester.ensureVisible(cell);
     await tester.tap(cell);
     expect(committed, ScoreCategory.fullHouse);
   });
