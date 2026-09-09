@@ -8,9 +8,10 @@ void main() {
   testWidgets('app boots to the main menu', (tester) async {
     SharedPreferences.setMockInitialValues({});
     await tester.pumpWidget(const DiceZeeApp());
+    await tester.pumpAndSettle();
 
     expect(find.byType(MainMenuScreen), findsOneWidget);
-    expect(find.text('2 Players'), findsOneWidget);
+    expect(find.text('Start'), findsOneWidget);
     expect(find.text('Statistics'), findsOneWidget);
   });
 }

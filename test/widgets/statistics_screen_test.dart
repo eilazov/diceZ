@@ -45,8 +45,20 @@ void main() {
     await tester.pumpWidget(subject());
     await tester.pumpAndSettle();
 
-    expect(find.text('Games played: 1'), findsOneWidget);
-    expect(find.text('Average score: 65.0'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('stat_games')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('stat_avg')),
+        matching: find.text('65.0'),
+      ),
+      findsOneWidget,
+    );
 
     final yahtzeeRow = find.byKey(const ValueKey('best_yahtzee'));
     await tester.ensureVisible(yahtzeeRow);

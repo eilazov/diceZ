@@ -2,11 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'pip_face.dart';
+
 /// The five dice in play. Tap a die to hold or release it (when [canHold]).
 ///
-/// [rollCount] should change on every roll; each change retriggers a short
-/// scale + rotation animation on the dice that are not held.
-class DiceRow extends StatelessWidget {
+/// [rollCount] should change on every roll; each change replays a staggered
+/// "tumble": the un-held dice hop, wobble, and churn through random faces
+/// before settling on their rolled value. Held dice sit still.
+class DiceRow extends StatefulWidget {
   const DiceRow({
     super.key,
     required this.dice,
@@ -14,6 +17,9 @@ class DiceRow extends StatelessWidget {
     required this.canHold,
     required this.rollCount,
     required this.onToggleHold,
+    this.seatColor,
+    this.placeholder = false,
+    this.dieSize = 58,
   });
 
   final List<int> dice;
@@ -22,20 +28,92 @@ class DiceRow extends StatelessWidget {
   final int rollCount;
   final ValueChanged<int> onToggleHold;
 
+  /// Identity colour of the active seat; tints held dice. Falls back to the
+  /// theme's primary when null.
+  final Color? seatColor;
+
+  /// Before the first roll of a turn: render blank faces, not interactive.
+  final bool placeholder;
+
+  final double dieSize;
+
+  @override
+  State<DiceRow> createState() => _DiceRowState();
+}
+
+class _DiceRowState extends State<DiceRow> with SingleTickerProviderStateMixin {
+  /// One full pass (including the last die's stagger) of the tumble.
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 720),
+    value: 1, // start at rest — only a roll starts the animation
+  );
+
+  final math.Random _rng = math.Random();
+  late List<List<int>> _reels = _freshReels();
+
+  /// Fraction of the timeline each successive die is delayed by.
+  static const double _stagger = 0.085;
+
+  /// Fraction of a die's local progress spent churning faces before it lands.
+  static const double _churn = 0.72;
+
+  List<List<int>> _freshReels() => List.generate(
+        widget.dice.length,
+        (_) => List.generate(7, (_) => _rng.nextInt(6) + 1),
+      );
+
+  @override
+  void didUpdateWidget(covariant DiceRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.rollCount != oldWidget.rollCount) {
+      _reels = _freshReels();
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Die [i]'s own 0..1 progress, offset by its stagger. 1 == at rest.
+  double _localT(int i) {
+    final span = 1 - _stagger * (widget.dice.length - 1);
+    return ((_controller.value - _stagger * i) / span).clamp(0.0, 1.0);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = widget.seatColor ?? scheme.primary;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        for (var i = 0; i < dice.length; i++)
+        for (var i = 0; i < widget.dice.length; i++)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: _Die(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: GestureDetector(
               key: ValueKey('die_$i'),
-              value: dice[i],
-              held: held[i],
-              animateKey: held[i] ? -1 : rollCount,
-              onTap: canHold ? () => onToggleHold(i) : null,
+              behavior: HitTestBehavior.opaque,
+              onTap: widget.canHold ? () => widget.onToggleHold(i) : null,
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) {
+                  final held = widget.held[i];
+                  return _DieBox(
+                    finalValue: widget.dice[i],
+                    reel: _reels[i],
+                    t: held ? 1.0 : _localT(i),
+                    held: held,
+                    placeholder: widget.placeholder,
+                    accent: accent,
+                    size: widget.dieSize,
+                  );
+                },
+              ),
             ),
           ),
       ],
@@ -43,116 +121,94 @@ class DiceRow extends StatelessWidget {
   }
 }
 
-class _Die extends StatelessWidget {
-  const _Die({
-    super.key,
-    required this.value,
+class _DieBox extends StatelessWidget {
+  const _DieBox({
+    required this.finalValue,
+    required this.reel,
+    required this.t,
     required this.held,
-    required this.animateKey,
-    required this.onTap,
+    required this.placeholder,
+    required this.accent,
+    required this.size,
   });
 
-  final int value;
+  final int finalValue;
+  final List<int> reel;
+  final double t; // 0..1 local progress; 1 == at rest
   final bool held;
-  final int animateKey;
-  final VoidCallback? onTap;
+  final bool placeholder;
+  final Color accent;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final rolling = t > 0 && t < 1;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: TweenAnimationBuilder<double>(
-        key: ValueKey(animateKey),
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        builder: (context, t, child) => Transform.rotate(
-          angle: (1 - t) * math.pi / 6,
-          child: Transform.scale(scale: 0.85 + 0.15 * t, child: child),
+    final face = t >= _DiceRowState._churn
+        ? finalValue
+        : reel[(t / _DiceRowState._churn * reel.length)
+            .floor()
+            .clamp(0, reel.length - 1)];
+
+    final hop = rolling ? -math.sin(t * math.pi) * size * 0.30 : 0.0;
+    final rot = rolling ? math.sin(t * math.pi * 3) * (1 - t) * 0.32 : 0.0;
+
+    final box = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: held
+            ? accent.withValues(alpha: 0.16)
+            : scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(size * 0.24),
+        border: Border.all(
+          color: held ? accent : scheme.outlineVariant,
+          width: held ? 2 : 1,
         ),
-        child: Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: held ? scheme.primaryContainer : scheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: held ? scheme.primary : scheme.outlineVariant,
-              width: held ? 2 : 1,
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: held ? 0.20 : 0.10),
+            blurRadius: held ? 10 : 6,
+            offset: Offset(0, held ? 4 : 2),
           ),
-          child: Stack(
-            children: [
-              Center(child: _Pips(value: value, color: scheme.onSurface)),
-              if (held)
-                Positioned(
-                  top: 2,
-                  right: 2,
-                  child: Icon(Icons.push_pin, size: 14, color: scheme.primary),
+        ],
+      ),
+      child: placeholder
+          ? const SizedBox.shrink()
+          : Stack(
+              children: [
+                Center(
+                  child: PipFace(
+                    value: face,
+                    color: scheme.onSurface,
+                    size: size,
+                  ),
                 ),
-            ],
-          ),
-        ),
+                if (held)
+                  Positioned(
+                    top: 3,
+                    right: 3,
+                    child: Icon(Icons.push_pin, size: size * 0.24, color: accent),
+                  ),
+              ],
+            ),
+    );
+
+    return Transform.translate(
+      offset: Offset(0, hop),
+      child: Transform.rotate(
+        angle: rot,
+        child: Transform.scale(scale: _scaleFor(t), child: box),
       ),
     );
   }
-}
 
-/// Pip layout for a face value of 1..6.
-class _Pips extends StatelessWidget {
-  const _Pips({required this.value, required this.color});
-
-  final int value;
-  final Color color;
-
-  static const Map<int, List<Alignment>> _layout = {
-    1: [Alignment.center],
-    2: [Alignment.topLeft, Alignment.bottomRight],
-    3: [Alignment.topLeft, Alignment.center, Alignment.bottomRight],
-    4: [
-      Alignment.topLeft,
-      Alignment.topRight,
-      Alignment.bottomLeft,
-      Alignment.bottomRight,
-    ],
-    5: [
-      Alignment.topLeft,
-      Alignment.topRight,
-      Alignment.center,
-      Alignment.bottomLeft,
-      Alignment.bottomRight,
-    ],
-    6: [
-      Alignment.topLeft,
-      Alignment.topRight,
-      Alignment.centerLeft,
-      Alignment.centerRight,
-      Alignment.bottomLeft,
-      Alignment.bottomRight,
-    ],
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final pips = _layout[value] ?? const [];
-    return Padding(
-      padding: const EdgeInsets.all(10),
-      child: Stack(
-        children: [
-          for (final a in pips)
-            Align(
-              alignment: a,
-              child: Container(
-                width: 9,
-                height: 9,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-            ),
-        ],
-      ),
-    );
+  /// Quick anticipation dip, grow through the tumble, small settle back.
+  double _scaleFor(double t) {
+    if (t <= 0 || t >= 1) return 1;
+    if (t < 0.12) return 1 - (t / 0.12) * 0.12; // 1.00 -> 0.88
+    if (t < 0.72) return 0.88 + ((t - 0.12) / 0.60) * 0.20; // 0.88 -> 1.08
+    return 1.08 - ((t - 0.72) / 0.28) * 0.08; // 1.08 -> 1.00
   }
 }
