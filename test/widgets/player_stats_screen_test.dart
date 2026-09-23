@@ -93,5 +93,6 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.byKey(const ValueKey('stat_avg')), findsOneWidget);
   });
 }
