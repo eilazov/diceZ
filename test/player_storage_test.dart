@@ -33,6 +33,14 @@ void main() {
     expect(names, ['Levon', 'Anna']);
   });
 
+  test('addProfile gives each profile a distinct id', () async {
+    await storage.addProfile('Levon');
+    await storage.addProfile('Anna');
+
+    final ids = (await storage.loadProfiles()).map((p) => p.id).toList();
+    expect(ids.toSet(), hasLength(2));
+  });
+
   test('renameProfile updates only the matching profile', () async {
     await storage.addProfile('Levon');
     await storage.addProfile('Anna');
@@ -62,6 +70,15 @@ void main() {
 
     final names = (await storage.loadProfiles()).map((p) => p.name).toList();
     expect(names, ['Anna']);
+  });
+
+  test('deleteProfile is a no-op for an unknown id', () async {
+    await storage.addProfile('Levon');
+
+    await storage.deleteProfile('missing');
+
+    final names = (await storage.loadProfiles()).map((p) => p.name).toList();
+    expect(names, ['Levon']);
   });
 
   test('unparseable legacy entries are skipped, not thrown', () async {
