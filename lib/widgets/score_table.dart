@@ -68,6 +68,7 @@ class ScoreTable extends StatelessWidget {
     required this.currentDice,
     required this.canCommit,
     required this.onCommit,
+    this.names,
   });
 
   final List<ScoreCard> cards;
@@ -75,6 +76,9 @@ class ScoreTable extends StatelessWidget {
   final List<int> currentDice;
   final bool canCommit;
   final ValueChanged<ScoreCategory> onCommit;
+
+  /// Resolved display name per seat; falls back to [SeatPalette.shortLabel].
+  final List<String>? names;
 
   Color _seatColor() => SeatPalette.color(currentPlayer);
 
@@ -110,7 +114,7 @@ class ScoreTable extends StatelessWidget {
             highlightColor:
                 p == currentPlayer ? seat.withValues(alpha: 0.14) : null,
             child: Text(
-              SeatPalette.shortLabel(p),
+              names?[p] ?? SeatPalette.shortLabel(p),
               style: theme.textTheme.labelLarge?.copyWith(
                 color: p == currentPlayer ? seat : null,
                 fontWeight:

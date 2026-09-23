@@ -146,6 +146,45 @@ void main() {
     expect(labelFor('chance').style?.fontWeight, isNot(FontWeight.w600));
   });
 
+  testWidgets('uses provided names in the column header when given',
+      (tester) async {
+    await tester.pumpWidget(_host(ScoreTable(
+      cards: cards(2),
+      currentPlayer: 0,
+      currentDice: const [1, 2, 3, 4, 5],
+      canCommit: false,
+      onCommit: (_) {},
+      names: const ['Levon', 'Anna'],
+    )));
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('col_header_0')),
+        matching: find.text('Levon'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('falls back to short seat labels when no names are given',
+      (tester) async {
+    await tester.pumpWidget(_host(ScoreTable(
+      cards: cards(2),
+      currentPlayer: 0,
+      currentDice: const [1, 2, 3, 4, 5],
+      canCommit: false,
+      onCommit: (_) {},
+    )));
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('col_header_0')),
+        matching: find.text('P1'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('the totals row shows each player total', (tester) async {
     final list = cards(2);
     list[0].commit(ScoreCategory.sixes, [6, 6, 6, 1, 1]); // 18
