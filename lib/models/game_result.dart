@@ -1,15 +1,25 @@
 import 'score_card.dart';
 
-/// One player's finished card: every category's score.
+/// One player's finished card: every category's score, plus which local
+/// profile (if any) played this seat.
 class PlayerScore {
-  const PlayerScore({required this.categoryScores});
+  const PlayerScore({required this.categoryScores, this.profileId, this.name});
 
   final Map<ScoreCategory, int> categoryScores;
+
+  /// The [PlayerProfile.id] that played this seat, or null for a guest.
+  final String? profileId;
+
+  /// A snapshot of the display name at the time the match was played, so
+  /// history stays readable after a rename or delete. Null for a guest.
+  final String? name;
 
   int get total => categoryScores.values.fold(0, (a, b) => a + b);
 
   Map<String, dynamic> toJson() => {
         for (final entry in categoryScores.entries) entry.key.name: entry.value,
+        'profileId': profileId,
+        'name': name,
       };
 
   factory PlayerScore.fromJson(Map<String, dynamic> json) => PlayerScore(
@@ -17,6 +27,8 @@ class PlayerScore {
           for (final category in ScoreCategory.values)
             category: (json[category.name] as num?)?.toInt() ?? 0,
         },
+        profileId: json['profileId'] as String?,
+        name: json['name'] as String?,
       );
 }
 
