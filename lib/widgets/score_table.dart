@@ -151,20 +151,35 @@ class ScoreTable extends StatelessWidget {
 
   TableRow _categoryRow(BuildContext context, ScoreCategory category) {
     final theme = Theme.of(context);
+    final openForCurrent = !cards[currentPlayer].isFilled(category);
+    final seat = _seatColor();
     return TableRow(
+      decoration: BoxDecoration(border: _rowRule(theme)),
       children: [
-        Padding(
+        Container(
           key: ValueKey('row_${category.name}'),
+          color: openForCurrent ? seat.withValues(alpha: 0.10) : null,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Text(
             categoryShortLabel(category),
-            style: theme.textTheme.bodyMedium,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: openForCurrent ? null : theme.colorScheme.onSurfaceVariant,
+              fontWeight: openForCurrent ? FontWeight.w600 : FontWeight.normal,
+            ),
           ),
         ),
         for (var p = 0; p < cards.length; p++) _scoreCell(context, p, category),
       ],
     );
   }
+
+  /// A hairline rule under a row, so each value lines up with its category.
+  Border _rowRule(ThemeData theme) => Border(
+        bottom: BorderSide(
+          color: theme.dividerColor.withValues(alpha: 0.6),
+          width: 0.5,
+        ),
+      );
 
   Widget _scoreCell(BuildContext context, int player, ScoreCategory category) {
     final theme = Theme.of(context);
@@ -225,6 +240,7 @@ class ScoreTable extends StatelessWidget {
           (sum, c) => sum + (card.scoreOf(c) ?? 0),
         );
     return TableRow(
+      decoration: BoxDecoration(border: _rowRule(theme)),
       children: [
         Padding(
           key: const ValueKey('row_number_subtotal'),

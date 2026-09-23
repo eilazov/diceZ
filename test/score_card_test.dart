@@ -105,8 +105,8 @@ void main() {
   });
 
   group('fullHouse', () {
-    test('scores 25 for three of one face plus two of another', () {
-      expect(ScoreCard.score(ScoreCategory.fullHouse, [2, 2, 2, 5, 5]), 25);
+    test('scores 30 for three of one face plus two of another', () {
+      expect(ScoreCard.score(ScoreCategory.fullHouse, [2, 2, 2, 5, 5]), 30);
     });
 
     test('is 0 for five of a kind', () {
@@ -123,16 +123,16 @@ void main() {
   });
 
   group('smallStraight', () {
-    test('scores 30 for 1-2-3-4 present', () {
-      expect(ScoreCard.score(ScoreCategory.smallStraight, [1, 2, 3, 4, 4]), 30);
+    test('scores 40 for 1-2-3-4 present', () {
+      expect(ScoreCard.score(ScoreCategory.smallStraight, [1, 2, 3, 4, 4]), 40);
     });
 
-    test('scores 30 for 3-4-5-6 present', () {
-      expect(ScoreCard.score(ScoreCategory.smallStraight, [3, 4, 5, 6, 6]), 30);
+    test('scores 40 for 3-4-5-6 present', () {
+      expect(ScoreCard.score(ScoreCategory.smallStraight, [3, 4, 5, 6, 6]), 40);
     });
 
     test('a large straight also contains a small straight', () {
-      expect(ScoreCard.score(ScoreCategory.smallStraight, [2, 3, 4, 5, 6]), 30);
+      expect(ScoreCard.score(ScoreCategory.smallStraight, [2, 3, 4, 5, 6]), 40);
     });
 
     test('is 0 without four consecutive values', () {
@@ -141,12 +141,12 @@ void main() {
   });
 
   group('largeStraight', () {
-    test('scores 40 for 1-2-3-4-5', () {
-      expect(ScoreCard.score(ScoreCategory.largeStraight, [1, 2, 3, 4, 5]), 40);
+    test('scores 50 for 1-2-3-4-5', () {
+      expect(ScoreCard.score(ScoreCategory.largeStraight, [1, 2, 3, 4, 5]), 50);
     });
 
-    test('scores 40 for 2-3-4-5-6', () {
-      expect(ScoreCard.score(ScoreCategory.largeStraight, [6, 5, 4, 3, 2]), 40);
+    test('scores 50 for 2-3-4-5-6', () {
+      expect(ScoreCard.score(ScoreCategory.largeStraight, [6, 5, 4, 3, 2]), 50);
     });
 
     test('is 0 for a small straight only', () {

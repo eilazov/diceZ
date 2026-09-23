@@ -52,14 +52,14 @@ void main() {
     await tester.pumpWidget(_host(ScoreTable(
       cards: cards(2),
       currentPlayer: 0,
-      currentDice: const [3, 3, 3, 2, 2], // full house -> 25
+      currentDice: const [3, 3, 3, 2, 2], // full house -> 30
       canCommit: true,
       onCommit: (c) => committed = c,
     )));
 
     final cell = find.byKey(const ValueKey('commit_fullHouse'));
     expect(
-      find.descendant(of: cell, matching: find.text('25')),
+      find.descendant(of: cell, matching: find.text('30')),
       findsOneWidget,
     );
 
@@ -119,10 +119,37 @@ void main() {
     );
   });
 
+  testWidgets(
+      "the current player's still-open category labels are emphasised, "
+      'filled ones are dimmed', (tester) async {
+    final list = cards(2);
+    list[0].commit(ScoreCategory.chance, [6, 6, 6, 1, 1]);
+
+    await tester.pumpWidget(_host(ScoreTable(
+      cards: list,
+      currentPlayer: 0,
+      currentDice: const [1, 2, 3, 4, 5],
+      canCommit: true,
+      onCommit: (_) {},
+    )));
+
+    Text labelFor(String category) => tester.widget<Text>(
+          find.descendant(
+            of: find.byKey(ValueKey('row_$category')),
+            matching: find.byType(Text),
+          ),
+        );
+
+    // Still open for player 0 -> emphasised.
+    expect(labelFor('ones').style?.fontWeight, FontWeight.w600);
+    // Already filled by player 0 -> dimmed, not emphasised.
+    expect(labelFor('chance').style?.fontWeight, isNot(FontWeight.w600));
+  });
+
   testWidgets('the totals row shows each player total', (tester) async {
     final list = cards(2);
     list[0].commit(ScoreCategory.sixes, [6, 6, 6, 1, 1]); // 18
-    list[1].commit(ScoreCategory.fullHouse, [2, 2, 2, 5, 5]); // 25
+    list[1].commit(ScoreCategory.fullHouse, [2, 2, 2, 5, 5]); // 30
 
     await tester.pumpWidget(_host(ScoreTable(
       cards: list,
@@ -142,7 +169,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('total_1')),
-        matching: find.text('25'),
+        matching: find.text('30'),
       ),
       findsOneWidget,
     );
