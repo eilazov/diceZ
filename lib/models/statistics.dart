@@ -49,6 +49,7 @@ class Statistics {
     var wins = 0;
     if (profileId != null) {
       for (final game in history) {
+        if (game.players.isEmpty) continue;
         final gameTotals = [for (final p in game.players) p.total];
         final bestTotal = gameTotals.reduce(max);
         final leaders = [

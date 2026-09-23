@@ -161,7 +161,6 @@ class _GameScreenState extends State<GameScreen> {
           Column(
             children: [
               _TurnHeader(
-                seat: seat,
                 name: _nameFor(seat),
                 color: seatColor,
                 rollsRemaining: _game.rollsRemaining,
@@ -197,7 +196,6 @@ class _GameScreenState extends State<GameScreen> {
           ),
           if (_awaitingHandoff)
             _HandoffCover(
-              seat: seat,
               name: _nameFor(seat),
               color: seatColor,
               onReady: () => setState(() => _awaitingHandoff = false),
@@ -211,13 +209,11 @@ class _GameScreenState extends State<GameScreen> {
 /// Whose turn it is, and how many rolls they have left (as pips).
 class _TurnHeader extends StatelessWidget {
   const _TurnHeader({
-    required this.seat,
     required this.name,
     required this.color,
     required this.rollsRemaining,
   });
 
-  final int seat;
   final String name;
   final Color color;
   final int rollsRemaining;
@@ -378,13 +374,11 @@ class _ControlDeck extends StatelessWidget {
 /// Full-screen "pass the phone" cover shown between turns.
 class _HandoffCover extends StatelessWidget {
   const _HandoffCover({
-    required this.seat,
     required this.name,
     required this.color,
     required this.onReady,
   });
 
-  final int seat;
   final String name;
   final Color color;
   final VoidCallback onReady;

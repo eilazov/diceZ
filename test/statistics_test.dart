@@ -103,6 +103,20 @@ void main() {
     });
   });
 
+  test('a zero-player game is skipped by the wins tally, not thrown on', () {
+    final history = [
+      game(const []), // malformed/corrupted entry; must not throw
+      game([
+        player({ScoreCategory.chance: 10}, profileId: 'levon'), // loses
+        player({ScoreCategory.chance: 50}, profileId: 'anna'),
+      ]),
+    ];
+
+    final stats = Statistics.from(history, profileId: 'levon');
+
+    expect(stats.wins, 0);
+  });
+
   test('Statistics.from with no profileId matches the pre-scoping numbers', () {
     final history = [
       game([

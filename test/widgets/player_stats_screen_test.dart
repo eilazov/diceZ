@@ -7,6 +7,16 @@ import 'package:dice_zee/models/score_card.dart';
 import 'package:dice_zee/services/game_storage.dart';
 import 'package:dice_zee/widgets/player_stats_screen.dart';
 
+/// A [GameStorage] whose history always fails to load, to exercise
+/// [PlayerStatsScreen]'s error branch.
+class _FailingStorage extends GameStorage {
+  const _FailingStorage();
+
+  @override
+  Future<List<GameResult>> loadHistory() =>
+      Future.error(StateError('boom'));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -94,5 +104,16 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('stat_avg')), findsOneWidget);
+  });
+
+  testWidgets('shows an error state instead of spinning forever when the '
+      'stats future fails', (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: PlayerStatsScreen(title: 'Everyone', storage: _FailingStorage()),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Something went wrong.'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 }

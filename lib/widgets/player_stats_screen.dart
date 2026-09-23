@@ -38,6 +38,9 @@ class _PlayerStatsScreenState extends State<PlayerStatsScreen> {
       body: FutureBuilder<Statistics>(
         future: _stats,
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const _ErrorState();
+          }
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -87,6 +90,44 @@ class _EmptyState extends StatelessWidget {
             FilledButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Start a game'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 72,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Something went wrong.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Couldn't load stats. Try again later.",
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
