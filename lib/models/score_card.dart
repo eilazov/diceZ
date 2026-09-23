@@ -78,11 +78,11 @@ class ScoreCard {
         final pairs = _facesWithAtLeast(dice, 2);
         final triples = _facesWithAtLeast(dice, 3);
         final hasFive = _facesWithAtLeast(dice, 5).isNotEmpty;
-        return (!hasFive && triples.length == 1 && pairs.length == 2) ? 25 : 0;
+        return (!hasFive && triples.length == 1 && pairs.length == 2) ? 30 : 0;
       case ScoreCategory.smallStraight:
-        return _containsRun(dice, 4) ? 30 : 0;
+        return _containsRun(dice, 4) ? 40 : 0;
       case ScoreCategory.largeStraight:
-        return _containsRun(dice, 5) ? 40 : 0;
+        return _containsRun(dice, 5) ? 50 : 0;
     }
   }
 
