@@ -88,9 +88,9 @@ int ScoreCard.score(ScoreCategory category, List<int> dice)
 | twoPairs        | sum of the four dice forming two **distinct** paired faces; 0 otherwise. A triple supplies one pair (`[5,5,5,2,2]` -> 14). Four-of-a-kind alone (`[4,4,4,4,1]`) -> 0 |
 | threeOfAKind    | sum of all 5 dice if some face appears >= 3, else 0 |
 | fourOfAKind     | sum of all 5 dice if some face appears >= 4, else 0 |
-| fullHouse       | 25 if the dice are exactly 3-of-one-face + 2-of-a-different-face, else 0. Five-of-a-kind does **not** count |
-| smallStraight   | 30 if any of {1,2,3,4} / {2,3,4,5} / {3,4,5,6} is a subset of the dice, else 0 |
-| largeStraight   | 40 if the dice set equals {1,2,3,4,5} or {2,3,4,5,6}, else 0 |
+| fullHouse       | 30 if the dice are exactly 3-of-one-face + 2-of-a-different-face, else 0. Five-of-a-kind does **not** count |
+| smallStraight   | 40 if any of {1,2,3,4} / {2,3,4,5} / {3,4,5,6} is a subset of the dice, else 0 |
+| largeStraight   | 50 if the dice set equals {1,2,3,4,5} or {2,3,4,5,6}, else 0 |
 | yahtzee         | 100 if all five dice are equal, else 0 |
 | chance          | sum of all 5 dice |
 

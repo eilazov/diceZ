@@ -16,7 +16,7 @@ match ends when every player has filled all 15 categories. Highest total wins
 (a shared top total is a tie). Each finished match is saved to local history.
 
 15 categories: ones–sixes, one pair, two pairs, three of a kind, four of a kind,
-full house (25), small straight (30), large straight (40), Dice Zee / yahtzee
+full house (30), small straight (40), large straight (50), Dice Zee / yahtzee
 (100), chance. No upper-section bonus, no bonus-yahtzee, no joker rules. Full
 scoring table is in the core design spec.
 

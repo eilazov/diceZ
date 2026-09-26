@@ -3,10 +3,17 @@
   "configurations": [
     {
       "name": "dice-zee-web",
-      "runtimeExecutable": "flutter",
-      "runtimeArgs": ["run", "-d", "web-server", "--web-port", "8087", "--web-hostname", "127.0.0.1"],
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8087", "--bind", "0.0.0.0", "--directory", "build/web"],
       "port": 8087,
       "url": "http://127.0.0.1:8087"
+    },
+    {
+      "name": "dice-zee-web-main",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8088", "--bind", "0.0.0.0", "--directory", "/home/levon/dev/personal/diceZ-main/build/web"],
+      "port": 8088,
+      "url": "http://127.0.0.1:8088"
     }
   ]
 }
