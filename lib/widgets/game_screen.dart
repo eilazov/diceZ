@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../haptics.dart';
 import '../models/dice_game.dart';
 import '../models/game_result.dart';
+import '../models/player_profile.dart';
 import '../models/score_card.dart';
 import '../seat_palette.dart';
 import '../services/game_storage.dart';
@@ -21,12 +22,15 @@ import 'score_table.dart';
 class GameScreen extends StatefulWidget {
   const GameScreen({
     super.key,
-    required this.playerCount,
+    required this.lineup,
     this.storage = const GameStorage(),
     this.random,
   });
 
-  final int playerCount;
+  /// One entry per seat, in turn order. A null entry is a guest seat and
+  /// falls back to [SeatPalette.label].
+  final List<PlayerProfile?> lineup;
+
   final GameStorage storage;
 
   /// Seed source for the dice; injected in tests for determinism.
@@ -38,12 +42,17 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   late final DiceGame _game = DiceGame(
-    playerCount: widget.playerCount,
+    playerCount: widget.lineup.length,
     random: widget.random,
   );
   int _rollCount = 0;
   bool _summaryShown = false;
   bool _awaitingHandoff = false;
+
+  String _nameFor(int seat) => widget.lineup[seat]?.name ?? SeatPalette.label(seat);
+
+  List<String> get _names =>
+      [for (var p = 0; p < _game.playerCount; p++) _nameFor(p)];
 
   void _roll() {
     AppHaptics.roll();
@@ -84,10 +93,14 @@ class _GameScreenState extends State<GameScreen> {
         playerCount: _game.playerCount,
         players: [
           for (var p = 0; p < _game.playerCount; p++)
-            PlayerScore(categoryScores: {
-              for (final c in ScoreCategory.values)
-                c: _game.scoreCardFor(p).scoreOf(c) ?? 0,
-            }),
+            PlayerScore(
+              categoryScores: {
+                for (final c in ScoreCategory.values)
+                  c: _game.scoreCardFor(p).scoreOf(c) ?? 0,
+              },
+              profileId: widget.lineup[p]?.id,
+              name: widget.lineup[p]?.name,
+            ),
         ],
       );
 
@@ -98,6 +111,7 @@ class _GameScreenState extends State<GameScreen> {
         builder: (_) => ResultsScreen(
           standings: _game.standings,
           winner: _game.winner,
+          names: _names,
         ),
       ),
     );
@@ -107,7 +121,7 @@ class _GameScreenState extends State<GameScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => GameScreen(
-            playerCount: widget.playerCount,
+            lineup: widget.lineup,
             storage: widget.storage,
           ),
         ),
@@ -147,7 +161,7 @@ class _GameScreenState extends State<GameScreen> {
           Column(
             children: [
               _TurnHeader(
-                seat: seat,
+                name: _nameFor(seat),
                 color: seatColor,
                 rollsRemaining: _game.rollsRemaining,
               ),
@@ -182,7 +196,7 @@ class _GameScreenState extends State<GameScreen> {
           ),
           if (_awaitingHandoff)
             _HandoffCover(
-              seat: seat,
+              name: _nameFor(seat),
               color: seatColor,
               onReady: () => setState(() => _awaitingHandoff = false),
             ),
@@ -195,12 +209,12 @@ class _GameScreenState extends State<GameScreen> {
 /// Whose turn it is, and how many rolls they have left (as pips).
 class _TurnHeader extends StatelessWidget {
   const _TurnHeader({
-    required this.seat,
+    required this.name,
     required this.color,
     required this.rollsRemaining,
   });
 
-  final int seat;
+  final String name;
   final Color color;
   final int rollsRemaining;
 
@@ -220,7 +234,7 @@ class _TurnHeader extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            SeatPalette.label(seat),
+            name,
             key: const ValueKey('turn_header'),
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w700,
@@ -360,12 +374,12 @@ class _ControlDeck extends StatelessWidget {
 /// Full-screen "pass the phone" cover shown between turns.
 class _HandoffCover extends StatelessWidget {
   const _HandoffCover({
-    required this.seat,
+    required this.name,
     required this.color,
     required this.onReady,
   });
 
-  final int seat;
+  final String name;
   final Color color;
   final VoidCallback onReady;
 
@@ -393,7 +407,7 @@ class _HandoffCover extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  SeatPalette.label(seat),
+                  name,
                   key: const ValueKey('handoff_seat'),
                   textAlign: TextAlign.center,
                   style: theme.textTheme.displaySmall?.copyWith(

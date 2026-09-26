@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dice_zee/models/player_profile.dart';
 import 'package:dice_zee/models/score_card.dart';
 import 'package:dice_zee/services/game_storage.dart';
 import 'package:dice_zee/widgets/game_screen.dart';
@@ -14,19 +15,24 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  Widget subject({int playerCount = 2}) => MaterialApp(
+  Widget subject({int playerCount = 2, List<PlayerProfile?>? lineup}) =>
+      MaterialApp(
         home: GameScreen(
-          playerCount: playerCount,
+          lineup: lineup ?? List<PlayerProfile?>.filled(playerCount, null),
           storage: const GameStorage(),
           random: Random(1),
         ),
       );
 
   /// A tall viewport so the whole screen fits without scrolling.
-  Future<void> pumpTall(WidgetTester tester, {int playerCount = 2}) async {
+  Future<void> pumpTall(
+    WidgetTester tester, {
+    int playerCount = 2,
+    List<PlayerProfile?>? lineup,
+  }) async {
     await tester.binding.setSurfaceSize(const Size(900, 2600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(subject(playerCount: playerCount));
+    await tester.pumpWidget(subject(playerCount: playerCount, lineup: lineup));
   }
 
   final rollButton = find.byKey(const ValueKey('roll_button'));
@@ -109,6 +115,15 @@ void main() {
     expect(find.byKey(const ValueKey('total_2')), findsOneWidget);
   });
 
+  testWidgets("a seated profile's name replaces the seat's default label",
+      (tester) async {
+    const levon = PlayerProfile(id: '1', name: 'Levon');
+    await tester.pumpWidget(subject(lineup: const [levon, null]));
+
+    expect(find.text('Levon'), findsOneWidget);
+    expect(find.text('Player 1'), findsNothing);
+  });
+
   testWidgets('finishing the match saves a result and shows the results screen',
       (tester) async {
     await pumpTall(tester);
@@ -125,6 +140,24 @@ void main() {
     final history = await const GameStorage().loadHistory();
     expect(history, hasLength(1));
     expect(history.single.playerCount, 2);
+  });
+
+  testWidgets("finishing the match records each seat's profile id and name",
+      (tester) async {
+    const levon = PlayerProfile(id: 'p1', name: 'Levon');
+    await pumpTall(tester, lineup: const [levon, null]);
+
+    for (final category in ScoreCategory.values) {
+      for (var player = 0; player < 2; player++) {
+        await rollAndCommit(tester, category);
+      }
+    }
+
+    final history = await const GameStorage().loadHistory();
+    expect(history.single.players[0].profileId, 'p1');
+    expect(history.single.players[0].name, 'Levon');
+    expect(history.single.players[1].profileId, isNull);
+    expect(history.single.players[1].name, isNull);
   });
 
   testWidgets('Rematch from the results screen starts a fresh match',

@@ -24,6 +24,29 @@ void main() {
       expect(restored.categoryScores, score.categoryScores);
       expect(restored.total, score.total);
     });
+
+    test('round-trips profileId and name', () {
+      final score = PlayerScore(
+        categoryScores: {for (final c in ScoreCategory.values) c: c.index},
+        profileId: 'p1',
+        name: 'Levon',
+      );
+
+      final restored = PlayerScore.fromJson(score.toJson());
+
+      expect(restored.profileId, 'p1');
+      expect(restored.name, 'Levon');
+    });
+
+    test('a legacy entry with neither key still parses', () {
+      final legacy = {for (final c in ScoreCategory.values) c.name: c.index};
+
+      final restored = PlayerScore.fromJson(legacy);
+
+      expect(restored.profileId, isNull);
+      expect(restored.name, isNull);
+      expect(restored.total, greaterThan(0));
+    });
   });
 
   group('GameResult', () {

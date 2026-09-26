@@ -1,17 +1,27 @@
 import 'package:flutter/material.dart';
 
 import '../models/game_result.dart';
+import '../models/player_profile.dart';
 import '../services/game_storage.dart';
+import '../services/player_storage.dart';
 import 'game_screen.dart';
 import 'pip_face.dart';
+import 'player_select_screen.dart';
+import 'players_screen.dart';
 import 'statistics_screen.dart';
 import 'version_indicator.dart';
 
-/// App home: pick a player count and start a match, or view statistics.
+/// App home: pick a player count and start a match, manage players, or view
+/// statistics.
 class MainMenuScreen extends StatefulWidget {
-  const MainMenuScreen({super.key, this.storage = const GameStorage()});
+  const MainMenuScreen({
+    super.key,
+    this.storage = const GameStorage(),
+    this.playerStorage = const PlayerStorage(),
+  });
 
   final GameStorage storage;
+  final PlayerStorage playerStorage;
 
   @override
   State<MainMenuScreen> createState() => _MainMenuScreenState();
@@ -21,17 +31,40 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   int _count = 2;
   late final Future<List<GameResult>> _history = widget.storage.loadHistory();
 
-  void _startGame() {
+  Future<void> _startGame() async {
+    final profiles = await widget.playerStorage.loadProfiles();
+    if (!mounted) return;
+
+    if (profiles.isEmpty) {
+      _openGame(List<PlayerProfile?>.filled(_count, null));
+      return;
+    }
+    if (profiles.length == 1) {
+      _openGame([profiles.single, for (var i = 1; i < _count; i++) null]);
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => GameScreen(playerCount: _count),
+        builder: (_) => PlayerSelectScreen(playerCount: _count),
       ),
+    );
+  }
+
+  void _openGame(List<PlayerProfile?> lineup) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => GameScreen(lineup: lineup)),
     );
   }
 
   void _openStatistics() {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+    );
+  }
+
+  void _openPlayers() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PlayersScreen()),
     );
   }
 
@@ -70,7 +103,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   _BestGameLine(history: _history),
                   const SizedBox(height: 40),
                   Text(
-                    'Players',
+                    'Player Count',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.labelLarge?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
@@ -103,6 +136,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     onPressed: _openStatistics,
                     icon: const Icon(Icons.bar_chart),
                     label: const Text('Statistics'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _openPlayers,
+                    icon: const Icon(Icons.people_outline),
+                    label: const Text('Players'),
                   ),
                   const SizedBox(height: 24),
                   const VersionIndicator(),

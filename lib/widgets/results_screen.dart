@@ -13,6 +13,7 @@ class ResultsScreen extends StatelessWidget {
     super.key,
     required this.standings,
     required this.winner,
+    this.names,
   });
 
   /// Final total per seat, in seat order.
@@ -21,6 +22,9 @@ class ResultsScreen extends StatelessWidget {
   /// Seat with the strictly-highest total, or null for a tie.
   final int? winner;
 
+  /// Resolved display name per seat; falls back to [SeatPalette.label].
+  final List<String>? names;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -28,6 +32,7 @@ class ResultsScreen extends StatelessWidget {
       ..sort((a, b) => standings[b].compareTo(standings[a]));
     final accent =
         winner == null ? theme.colorScheme.primary : SeatPalette.color(winner!);
+    String nameFor(int seat) => names?[seat] ?? SeatPalette.label(seat);
 
     return Scaffold(
       body: SafeArea(
@@ -44,9 +49,7 @@ class ResultsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               Text(
-                winner == null
-                    ? "It's a tie!"
-                    : '${SeatPalette.label(winner!)} wins!',
+                winner == null ? "It's a tie!" : '${nameFor(winner!)} wins!',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.displaySmall?.copyWith(
                   color: accent,
@@ -69,6 +72,7 @@ class ResultsScreen extends StatelessWidget {
                       _StandingRow(
                         rank: i + 1,
                         seat: ranking[i],
+                        name: nameFor(ranking[i]),
                         total: standings[ranking[i]],
                         isWinner: ranking[i] == winner,
                       ),
@@ -103,12 +107,14 @@ class _StandingRow extends StatelessWidget {
   const _StandingRow({
     required this.rank,
     required this.seat,
+    required this.name,
     required this.total,
     required this.isWinner,
   });
 
   final int rank;
   final int seat;
+  final String name;
   final int total;
   final bool isWinner;
 
@@ -150,7 +156,7 @@ class _StandingRow extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              SeatPalette.label(seat),
+              name,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: isWinner ? FontWeight.w700 : FontWeight.w500,
               ),
