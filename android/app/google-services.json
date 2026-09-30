@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1012389562814",
+    "project_id": "dicez-e6ab5",
+    "storage_bucket": "dicez-e6ab5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1012389562814:android:86361e64377e3f1bc591ef",
+        "android_client_info": {
+          "package_name": "com.levon.dice_zee"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1012389562814-56s20q8o46o6u1ci7ipvsuft19gfddnl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBfnoBTAWoF5r3hr1AVY8D9y2ADLNamdzQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1012389562814-56s20q8o46o6u1ci7ipvsuft19gfddnl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
