@@ -35,6 +35,10 @@ class PlayerStorage {
     }
   }
 
+  /// Overwrite the stored list (used by cloud sync).
+  Future<void> replaceProfiles(List<PlayerProfile> profiles) =>
+      _saveProfiles(profiles);
+
   Future<void> _saveProfiles(List<PlayerProfile> profiles) async {
     final prefs = await SharedPreferences.getInstance();
     final encoded = jsonEncode(profiles.map((p) => p.toJson()).toList());
@@ -44,10 +48,12 @@ class PlayerStorage {
   /// Append a new profile named [name] with a freshly generated id.
   Future<void> addProfile(String name) async {
     final profiles = await loadProfiles();
-    profiles.add(PlayerProfile(
-      id: DateTime.now().microsecondsSinceEpoch.toString(),
-      name: name,
-    ));
+    profiles.add(
+      PlayerProfile(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        name: name,
+      ),
+    );
     await _saveProfiles(profiles);
   }
 
@@ -56,14 +62,41 @@ class PlayerStorage {
     final profiles = await loadProfiles();
     final index = profiles.indexWhere((p) => p.id == id);
     if (index == -1) return;
-    profiles[index] = PlayerProfile(id: id, name: name);
+    profiles[index] = PlayerProfile(
+      id: id,
+      name: name,
+      linkedToAccount: profiles[index].linkedToAccount,
+    );
     await _saveProfiles(profiles);
   }
 
-  /// Remove the profile with id [id]. No-op if not found.
+  /// Remove the profile with id [id]. No-op if not found or if it is the
+  /// account profile (see [removeAccountProfile]).
   Future<void> deleteProfile(String id) async {
     final profiles = await loadProfiles();
-    profiles.removeWhere((p) => p.id == id);
+    profiles.removeWhere((p) => p.id == id && !p.linkedToAccount);
+    await _saveProfiles(profiles);
+  }
+
+  /// Make sure the signed-in account [uid] has a profile, listed first. The
+  /// id is derived from [uid], so the same account keeps its history across
+  /// sign-outs. An existing profile (and any rename of it) is left alone.
+  Future<void> ensureAccountProfile(String uid, String name) async {
+    final profiles = await loadProfiles();
+    final id = 'account_$uid';
+    if (profiles.any((p) => p.id == id)) return;
+    profiles.removeWhere((p) => p.linkedToAccount);
+    profiles.insert(
+      0,
+      PlayerProfile(id: id, name: name, linkedToAccount: true),
+    );
+    await _saveProfiles(profiles);
+  }
+
+  /// Drop the account profile on sign-out. Past games keep its id and name.
+  Future<void> removeAccountProfile() async {
+    final profiles = await loadProfiles();
+    profiles.removeWhere((p) => p.linkedToAccount);
     await _saveProfiles(profiles);
   }
 }

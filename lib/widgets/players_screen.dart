@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/player_profile.dart';
 import '../services/player_storage.dart';
+import '../services/sync_service.dart';
 
 /// Manage local player profiles: add, rename, delete.
 class PlayersScreen extends StatefulWidget {
@@ -31,6 +34,7 @@ class _PlayersScreenState extends State<PlayersScreen> {
     final name = await _promptName(context, title: 'Add player');
     if (name == null || name.isEmpty) return;
     await widget.storage.addProfile(name);
+    unawaited(SyncService.instance.pushPlayers());
     await _load();
   }
 
@@ -42,6 +46,7 @@ class _PlayersScreenState extends State<PlayersScreen> {
     );
     if (name == null || name.isEmpty || name == profile.name) return;
     await widget.storage.renameProfile(profile.id, name);
+    unawaited(SyncService.instance.pushPlayers());
     await _load();
   }
 
@@ -68,6 +73,7 @@ class _PlayersScreenState extends State<PlayersScreen> {
     );
     if (confirmed != true) return;
     await widget.storage.deleteProfile(profile.id);
+    unawaited(SyncService.instance.pushPlayers());
     await _load();
   }
 
@@ -88,22 +94,27 @@ class _PlayersScreenState extends State<PlayersScreen> {
       body: profiles == null
           ? const Center(child: CircularProgressIndicator())
           : profiles.isEmpty
-              ? const _EmptyState()
-              : ListView(
-                  children: [
-                    for (final profile in profiles)
-                      ListTile(
-                        key: ValueKey('player_${profile.id}'),
-                        title: Text(profile.name),
-                        onTap: () => _renameProfile(profile),
-                        trailing: IconButton(
-                          key: ValueKey('delete_${profile.id}'),
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => _deleteProfile(profile),
-                        ),
-                      ),
-                  ],
-                ),
+          ? const _EmptyState()
+          : ListView(
+              children: [
+                for (final profile in profiles)
+                  ListTile(
+                    key: ValueKey('player_${profile.id}'),
+                    title: Text(profile.name),
+                    onTap: () => _renameProfile(profile),
+                    subtitle: profile.linkedToAccount
+                        ? const Text('You')
+                        : null,
+                    trailing: profile.linkedToAccount
+                        ? null
+                        : IconButton(
+                            key: ValueKey('delete_${profile.id}'),
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => _deleteProfile(profile),
+                          ),
+                  ),
+              ],
+            ),
     );
   }
 }

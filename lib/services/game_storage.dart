@@ -35,6 +35,13 @@ class GameStorage {
     }
   }
 
+  /// Overwrite the stored history (used by cloud sync).
+  Future<void> replaceHistory(List<GameResult> history) async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = jsonEncode(history.map((r) => r.toJson()).toList());
+    await prefs.setString(_historyKey, encoded);
+  }
+
   /// Prepend [result] to the history and persist.
   Future<void> saveResult(GameResult result) async {
     final prefs = await SharedPreferences.getInstance();

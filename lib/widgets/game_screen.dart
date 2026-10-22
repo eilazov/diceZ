@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import '../models/player_profile.dart';
 import '../models/score_card.dart';
 import '../seat_palette.dart';
 import '../services/game_storage.dart';
+import '../services/sync_service.dart';
 import 'dice_row.dart';
 import 'results_screen.dart';
 import 'score_table.dart';
@@ -78,7 +80,9 @@ class _GameScreenState extends State<GameScreen> {
       if (!_summaryShown) {
         _summaryShown = true;
         AppHaptics.gameOver();
-        await widget.storage.saveResult(_buildResult());
+        final result = _buildResult();
+        await widget.storage.saveResult(result);
+        unawaited(SyncService.instance.pushMatch(result));
         if (mounted) await _showResults();
       }
       return;

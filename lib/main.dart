@@ -2,6 +2,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
+import 'services/auth_service.dart';
+import 'services/firestore_cloud_store.dart';
+import 'services/sync_service.dart';
 import 'widgets/friendly_error_view.dart';
 import 'widgets/main_menu.dart';
 import 'scroll_behavior.dart';
@@ -9,6 +12,10 @@ import 'scroll_behavior.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  SyncService.instance.attach(
+    FirebaseAuthService(),
+    (uid) => FirestoreCloudStore(uid),
+  );
   ErrorWidget.builder = (details) => FriendlyErrorView(details: details);
   runApp(const DiceZeeApp());
 }
