@@ -93,4 +93,56 @@ void main() {
     expect(profiles, hasLength(1));
     expect(profiles.single.name, 'Levon');
   });
+
+  group('account profile', () {
+    test('ensureAccountProfile adds a flagged profile first', () async {
+      await storage.addProfile('Anna');
+
+      await storage.ensureAccountProfile('uid1', 'Levon');
+
+      final profiles = await storage.loadProfiles();
+      expect(profiles.map((p) => p.name), ['Levon', 'Anna']);
+      expect(profiles.first.linkedToAccount, isTrue);
+      expect(profiles.first.id, 'account_uid1');
+    });
+
+    test(
+      'ensureAccountProfile is idempotent and keeps a renamed name',
+      () async {
+        await storage.ensureAccountProfile('uid1', 'Levon');
+        await storage.renameProfile('account_uid1', 'Lev');
+
+        await storage.ensureAccountProfile('uid1', 'Levon');
+
+        final profiles = await storage.loadProfiles();
+        expect(profiles, hasLength(1));
+        expect(profiles.single.name, 'Lev');
+        expect(profiles.single.linkedToAccount, isTrue);
+      },
+    );
+
+    test('rename keeps the account flag', () async {
+      await storage.ensureAccountProfile('uid1', 'Levon');
+      await storage.renameProfile('account_uid1', 'Lev');
+
+      expect((await storage.loadProfiles()).single.linkedToAccount, isTrue);
+    });
+
+    test('removeAccountProfile removes only the account profile', () async {
+      await storage.addProfile('Anna');
+      await storage.ensureAccountProfile('uid1', 'Levon');
+
+      await storage.removeAccountProfile();
+
+      expect((await storage.loadProfiles()).map((p) => p.name), ['Anna']);
+    });
+
+    test('deleteProfile refuses the account profile', () async {
+      await storage.ensureAccountProfile('uid1', 'Levon');
+
+      await storage.deleteProfile('account_uid1');
+
+      expect(await storage.loadProfiles(), hasLength(1));
+    });
+  });
 }

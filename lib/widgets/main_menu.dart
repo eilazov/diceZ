@@ -1,9 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/game_result.dart';
 import '../models/player_profile.dart';
+import '../services/auth_service.dart';
 import '../services/game_storage.dart';
 import '../services/player_storage.dart';
+import '../services/sync_service.dart';
+import 'account_screen.dart';
 import 'game_screen.dart';
 import 'pip_face.dart';
 import 'player_select_screen.dart';
@@ -18,10 +23,15 @@ class MainMenuScreen extends StatefulWidget {
     super.key,
     this.storage = const GameStorage(),
     this.playerStorage = const PlayerStorage(),
+    this.authServiceBuilder,
   });
 
   final GameStorage storage;
   final PlayerStorage playerStorage;
+
+  /// Builds the auth service lazily (Firebase is only touched once the
+  /// Account screen opens). Defaults to [FirebaseAuthService].
+  final AuthService Function()? authServiceBuilder;
 
   @override
   State<MainMenuScreen> createState() => _MainMenuScreenState();
@@ -29,7 +39,23 @@ class MainMenuScreen extends StatefulWidget {
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
   int _count = 2;
-  late final Future<List<GameResult>> _history = widget.storage.loadHistory();
+  late Future<List<GameResult>> _history = widget.storage.loadHistory();
+  StreamSubscription<void>? _syncSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // A cloud pull may bring in matches from other devices.
+    _syncSub = SyncService.instance.changes.listen((_) {
+      if (mounted) setState(() => _history = widget.storage.loadHistory());
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncSub?.cancel();
+    super.dispose();
+  }
 
   Future<void> _startGame() async {
     final profiles = await widget.playerStorage.loadProfiles();
@@ -51,20 +77,26 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 
   void _openGame(List<PlayerProfile?> lineup) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => GameScreen(lineup: lineup)),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => GameScreen(lineup: lineup)));
   }
 
   void _openStatistics() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const StatisticsScreen()),
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const StatisticsScreen()));
   }
 
   void _openPlayers() {
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const PlayersScreen()));
+  }
+
+  void _openAccount() {
     Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const PlayersScreen()),
+      MaterialPageRoute(
+        builder: (_) =>
+            AccountScreen(authService: widget.authServiceBuilder?.call()),
+      ),
     );
   }
 
@@ -142,6 +174,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     onPressed: _openPlayers,
                     icon: const Icon(Icons.people_outline),
                     label: const Text('Players'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _openAccount,
+                    icon: const Icon(Icons.account_circle_outlined),
+                    label: const Text('Account'),
                   ),
                   const SizedBox(height: 24),
                   const VersionIndicator(),

@@ -119,4 +119,15 @@ void main() {
     expect(find.text('Levon'), findsOneWidget);
     expect(await storage.loadProfiles(), hasLength(1));
   });
+
+  testWidgets('the account profile has no delete button', (tester) async {
+    await storage.ensureAccountProfile('uid1', 'Levon');
+    await storage.addProfile('Anna');
+    await tester.pumpWidget(subject());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Levon'), findsOneWidget);
+    expect(find.byKey(const ValueKey('delete_account_uid1')), findsNothing);
+    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+  });
 }

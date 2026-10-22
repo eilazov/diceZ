@@ -25,4 +25,15 @@ void main() {
       isNot(const PlayerProfile(id: '2', name: 'Levon')),
     );
   });
+
+  test('linkedToAccount defaults to false and survives JSON', () {
+    expect(const PlayerProfile(id: '1', name: 'A').linkedToAccount, isFalse);
+    expect(
+      PlayerProfile.fromJson(const {'id': '1', 'name': 'A'}).linkedToAccount,
+      isFalse,
+    );
+
+    const linked = PlayerProfile(id: '1', name: 'A', linkedToAccount: true);
+    expect(PlayerProfile.fromJson(linked.toJson()).linkedToAccount, isTrue);
+  });
 }
