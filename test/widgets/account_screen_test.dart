@@ -1,12 +1,18 @@
 import 'dart:async';
 
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dice_zee/services/auth_service.dart';
+import 'package:dice_zee/services/friend_service.dart';
+import 'package:dice_zee/widgets/friends_screen.dart';
 import 'package:dice_zee/services/player_storage.dart';
 import 'package:dice_zee/widgets/account_screen.dart';
+
+import '../support/in_memory_friend_store.dart';
 
 class FakeAuthService implements AuthService {
   FakeAuthService({this.user, this.appleSupported = true});
@@ -179,5 +185,26 @@ void main() {
     await pumpScreen(tester, auth);
 
     expect((await storage.loadProfiles()).single.name, 'Ada');
+  });
+
+  testWidgets('signed in: shows friend code and opens Friends', (tester) async {
+    final service = FriendService(InMemoryFriendStore(), random: Random(2));
+    final auth = FakeAuthService(
+      user: const AccountUser(uid: 'u1', displayName: 'Ada', email: 'a@b.c'),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AccountScreen(authService: auth, friendService: service),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final me = await service.myProfile('u1', 'Ada');
+    expect(find.text(me.code), findsOneWidget);
+
+    await tester.tap(find.text('Friends'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FriendsScreen), findsOneWidget);
   });
 }

@@ -35,8 +35,8 @@ class ScoreCard {
   /// reaches [GameMode.upperBonusThreshold] in a mode that has one.
   int get upperBonus =>
       mode.hasUpperBonus && upperSum >= GameMode.upperBonusThreshold
-          ? GameMode.upperBonusValue
-          : 0;
+      ? GameMode.upperBonusValue
+      : 0;
 
   /// Every committed category plus the upper bonus.
   int get total => _committed.values.fold(0, (a, b) => a + b) + upperBonus;
@@ -94,7 +94,9 @@ class ScoreCard {
         return faces.isEmpty ? 0 : faces.last * 2;
       case ScoreCategory.twoPairs:
         final faces = _facesWithAtLeast(dice, 2);
-        return faces.length < 2 ? 0 : (faces[faces.length - 1] + faces[faces.length - 2]) * 2;
+        return faces.length < 2
+            ? 0
+            : (faces[faces.length - 1] + faces[faces.length - 2]) * 2;
       case ScoreCategory.threeOfAKind:
         return _facesWithAtLeast(dice, 3).isEmpty ? 0 : _sum(dice);
       case ScoreCategory.fourOfAKind:
@@ -140,8 +142,9 @@ class ScoreCard {
     for (final d in dice) {
       counts[d] = (counts[d] ?? 0) + 1;
     }
-    final faces = counts.entries.where((e) => e.value >= min).map((e) => e.key).toList()
-      ..sort();
+    final faces =
+        counts.entries.where((e) => e.value >= min).map((e) => e.key).toList()
+          ..sort();
     return faces;
   }
 }

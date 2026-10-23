@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Deploy with: firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    // Existing rule: an account owns everything under its own users/{uid}.
+    match /users/{uid}/{document=**} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Friends. Rules are OR-ed, so these only add cross-account access.
+
+    // Anyone signed in can resolve a code; only its owner can claim one, and
+    // a claimed code can't be overwritten (create only).
+    match /friendCodes/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      // The person being added writes into the requester's friends list, but
+      // only while the requester has a pending request to them.
+      match /friends/{friendUid} {
+        allow create, delete: if signedIn() && request.auth.uid == friendUid &&
+          exists(/databases/$(database)/documents/users/$(uid)/sentRequests/$(request.auth.uid));
+        // Unfriending also clears the other side's entry.
+        allow delete: if signedIn() && request.auth.uid == friendUid;
+      }
+
+      // The sender drops a request in the recipient's inbox, and can withdraw it.
+      match /friendRequests/{fromUid} {
+        allow create: if signedIn() && request.auth.uid == fromUid &&
+          exists(/databases/$(database)/documents/users/$(fromUid)/sentRequests/$(uid));
+        allow delete: if signedIn() && request.auth.uid == fromUid;
+      }
+
+      // The recipient clears the sender's record when declining or accepting.
+      match /sentRequests/{toUid} {
+        allow delete: if signedIn() && request.auth.uid == toUid;
+      }
+    }
+  }
+}

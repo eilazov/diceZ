@@ -40,10 +40,10 @@ class _PlayerStatsScreenState extends State<PlayerStatsScreen> {
 
   Future<Statistics> _load() => widget.storage.loadHistory().then(
     (history) => Statistics.from(
-        history,
-        profileId: widget.profileId,
-        mode: widget.mode,
-      ),
+      history,
+      profileId: widget.profileId,
+      mode: widget.mode,
+    ),
   );
 
   @override

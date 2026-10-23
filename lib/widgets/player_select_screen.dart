@@ -25,10 +25,12 @@ class PlayerSelectScreen extends StatefulWidget {
 }
 
 class _PlayerSelectScreenState extends State<PlayerSelectScreen> {
-  late final Future<List<PlayerProfile>> _profiles =
-      widget.storage.loadProfiles();
-  late final List<PlayerProfile?> _seats =
-      List<PlayerProfile?>.filled(widget.playerCount, null);
+  late final Future<List<PlayerProfile>> _profiles = widget.storage
+      .loadProfiles();
+  late final List<PlayerProfile?> _seats = List<PlayerProfile?>.filled(
+    widget.playerCount,
+    null,
+  );
 
   void _assign(int seat, PlayerProfile? profile) {
     setState(() => _seats[seat] = profile);
@@ -36,7 +38,9 @@ class _PlayerSelectScreenState extends State<PlayerSelectScreen> {
 
   void _start() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => GameScreen(lineup: List.of(_seats), mode: widget.mode)),
+      MaterialPageRoute(
+        builder: (_) => GameScreen(lineup: List.of(_seats), mode: widget.mode),
+      ),
     );
   }
 

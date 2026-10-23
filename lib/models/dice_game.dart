@@ -18,10 +18,9 @@ class DiceGame {
     required this.playerCount,
     this.mode = GameMode.extended,
     Random? random,
-  })
-      : assert(playerCount >= 2 && playerCount <= 4),
-        _random = random ?? Random(),
-        _cards = List.generate(playerCount, (_) => ScoreCard(mode: mode));
+  }) : assert(playerCount >= 2 && playerCount <= 4),
+       _random = random ?? Random(),
+       _cards = List.generate(playerCount, (_) => ScoreCard(mode: mode));
 
   final int playerCount;
   final GameMode mode;
@@ -67,8 +66,7 @@ class DiceGame {
   int totalFor(int player) => _cards[player].total;
 
   /// Every player's total, indexed by seat.
-  List<int> get standings =>
-      List.generate(playerCount, (p) => _cards[p].total);
+  List<int> get standings => List.generate(playerCount, (p) => _cards[p].total);
 
   /// Whether every player has scored all categories.
   bool get isOver => _cards.every((c) => c.isComplete);

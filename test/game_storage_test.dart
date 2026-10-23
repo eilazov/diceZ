@@ -7,14 +7,15 @@ import 'package:dice_zee/models/game_result.dart';
 import 'package:dice_zee/models/score_card.dart';
 import 'package:dice_zee/services/game_storage.dart';
 
-GameResult result({required int playerCount, required DateTime at}) => GameResult(
+GameResult result({required int playerCount, required DateTime at}) =>
+    GameResult(
       playedAt: at,
       playerCount: playerCount,
       players: [
         for (var p = 0; p < playerCount; p++)
-          PlayerScore(categoryScores: {
-            for (final c in ScoreCategory.values) c: p + 1,
-          }),
+          PlayerScore(
+            categoryScores: {for (final c in ScoreCategory.values) c: p + 1},
+          ),
       ],
     );
 
@@ -48,15 +49,19 @@ void main() {
       result(playerCount: 4, at: DateTime.utc(2026, 2, 2)),
     );
 
-    final counts =
-        (await storage.loadHistory()).map((r) => r.playerCount).toList();
+    final counts = (await storage.loadHistory())
+        .map((r) => r.playerCount)
+        .toList();
     expect(counts, [4, 2]);
   });
 
   test('unparseable legacy entries are skipped, not thrown', () async {
     SharedPreferences.setMockInitialValues({
       'dice_zee.history': jsonEncode([
-        {'playedAt': '2026-01-01T00:00:00.000Z', 'totalScore': 210}, // old shape
+        {
+          'playedAt': '2026-01-01T00:00:00.000Z',
+          'totalScore': 210,
+        }, // old shape
         result(playerCount: 2, at: DateTime.utc(2026, 3, 3)).toJson(),
       ]),
     });

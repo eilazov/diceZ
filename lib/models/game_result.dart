@@ -26,21 +26,21 @@ class PlayerScore {
   int get total => categoryScores.values.fold(0, (a, b) => a + b) + upperBonus;
 
   Map<String, dynamic> toJson() => {
-        for (final entry in categoryScores.entries) entry.key.name: entry.value,
-        'upperBonus': upperBonus,
-        'profileId': profileId,
-        'name': name,
-      };
+    for (final entry in categoryScores.entries) entry.key.name: entry.value,
+    'upperBonus': upperBonus,
+    'profileId': profileId,
+    'name': name,
+  };
 
   factory PlayerScore.fromJson(Map<String, dynamic> json) => PlayerScore(
-        categoryScores: {
-          for (final category in ScoreCategory.values)
-            category: (json[category.name] as num?)?.toInt() ?? 0,
-        },
-        upperBonus: (json['upperBonus'] as num?)?.toInt() ?? 0,
-        profileId: json['profileId'] as String?,
-        name: json['name'] as String?,
-      );
+    categoryScores: {
+      for (final category in ScoreCategory.values)
+        category: (json[category.name] as num?)?.toInt() ?? 0,
+    },
+    upperBonus: (json['upperBonus'] as num?)?.toInt() ?? 0,
+    profileId: json['profileId'] as String?,
+    name: json['name'] as String?,
+  );
 }
 
 /// A finished game's outcome, as stored in local history.
@@ -63,18 +63,18 @@ class GameResult {
       players.map((p) => p.total).fold(0, (a, b) => a > b ? a : b);
 
   Map<String, dynamic> toJson() => {
-        'playedAt': playedAt.toIso8601String(),
-        'mode': mode.name,
-        'playerCount': playerCount,
-        'players': players.map((p) => p.toJson()).toList(),
-      };
+    'playedAt': playedAt.toIso8601String(),
+    'mode': mode.name,
+    'playerCount': playerCount,
+    'players': players.map((p) => p.toJson()).toList(),
+  };
 
   factory GameResult.fromJson(Map<String, dynamic> json) => GameResult(
-        playedAt: DateTime.parse(json['playedAt'] as String),
-        mode: GameMode.fromName(json['mode'] as String?),
-        playerCount: (json['playerCount'] as num).toInt(),
-        players: (json['players'] as List<dynamic>)
-            .map((e) => PlayerScore.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    playedAt: DateTime.parse(json['playedAt'] as String),
+    mode: GameMode.fromName(json['mode'] as String?),
+    playerCount: (json['playerCount'] as num).toInt(),
+    players: (json['players'] as List<dynamic>)
+        .map((e) => PlayerScore.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }

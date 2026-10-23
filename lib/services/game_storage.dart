@@ -45,7 +45,8 @@ class GameStorage {
   /// Prepend [result] to the history and persist.
   Future<void> saveResult(GameResult result) async {
     final prefs = await SharedPreferences.getInstance();
-    final history = await loadHistory()..insert(0, result);
+    final history = await loadHistory()
+      ..insert(0, result);
     final encoded = jsonEncode(history.map((r) => r.toJson()).toList());
     await prefs.setString(_historyKey, encoded);
   }

@@ -2,8 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/friend_profile.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_friend_store.dart';
+import '../services/friend_service.dart';
 import '../services/player_storage.dart';
+import 'friend_code_tile.dart';
+import 'friends_screen.dart';
 
 /// Sign in with Google / Apple, or carry on as a guest. Signed in, shows the
 /// account and a sign-out button.
@@ -12,7 +17,11 @@ class AccountScreen extends StatefulWidget {
     super.key,
     this.authService,
     this.playerStorage = const PlayerStorage(),
+    this.friendService,
   });
+
+  /// Defaults to a Firestore-backed [FriendService]; injectable for tests.
+  final FriendService? friendService;
 
   final PlayerStorage playerStorage;
 
@@ -28,6 +37,8 @@ class _AccountScreenState extends State<AccountScreen> {
   StreamSubscription<AccountUser?>? _authSub;
   bool _busy = false;
   String? _error;
+  String? _codeUid;
+  Future<FriendProfile?>? _codeFuture;
 
   @override
   void initState() {
@@ -52,6 +63,24 @@ class _AccountScreenState extends State<AccountScreen> {
       user.uid,
       name != null && name.isNotEmpty ? name : (email ?? 'Me'),
     );
+  }
+
+  /// The signed-in account's friend code, or null if it can't be loaded
+  /// (offline, rules not deployed). Cached per account.
+  Future<FriendProfile?> _friendProfile(AccountUser user) {
+    if (_codeUid != user.uid) {
+      _codeUid = user.uid;
+      _codeFuture = () async {
+        try {
+          final service =
+              widget.friendService ?? FriendService(FirestoreFriendStore());
+          return await service.myProfile(user.uid, accountDisplayName(user));
+        } catch (_) {
+          return null;
+        }
+      }();
+    }
+    return _codeFuture!;
   }
 
   Future<void> _run(Future<void> Function() action) async {
@@ -170,7 +199,29 @@ class _AccountScreenState extends State<AccountScreen> {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
+        FutureBuilder<FriendProfile?>(
+          future: _friendProfile(user),
+          builder: (context, snapshot) {
+            final profile = snapshot.data;
+            return profile == null
+                ? const SizedBox.shrink()
+                : FriendCodeTile(code: profile.code);
+          },
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  FriendsScreen(user: user, service: widget.friendService),
+            ),
+          ),
+          icon: const Icon(Icons.group),
+          label: const Text('Friends'),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+        ),
+        const SizedBox(height: 12),
         OutlinedButton(
           onPressed: _busy ? null : () => _run(_auth.signOut),
           child: const Text('Sign out'),

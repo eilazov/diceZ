@@ -14,8 +14,8 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   Widget subject(int playerCount) => MaterialApp(
-        home: PlayerSelectScreen(playerCount: playerCount, storage: storage),
-      );
+    home: PlayerSelectScreen(playerCount: playerCount, storage: storage),
+  );
 
   testWidgets('every seat defaults to Guest', (tester) async {
     await storage.addProfile('Levon');
@@ -24,16 +24,19 @@ void main() {
     await tester.pumpWidget(subject(2));
     await tester.pumpAndSettle();
 
-    final guest0 =
-        tester.widget<ChoiceChip>(find.byKey(const ValueKey('seat_0_guest')));
-    final guest1 =
-        tester.widget<ChoiceChip>(find.byKey(const ValueKey('seat_1_guest')));
+    final guest0 = tester.widget<ChoiceChip>(
+      find.byKey(const ValueKey('seat_0_guest')),
+    );
+    final guest1 = tester.widget<ChoiceChip>(
+      find.byKey(const ValueKey('seat_1_guest')),
+    );
     expect(guest0.selected, isTrue);
     expect(guest1.selected, isTrue);
   });
 
-  testWidgets('picking a profile for one seat disables it on the other seats',
-      (tester) async {
+  testWidgets('picking a profile for one seat disables it on the other seats', (
+    tester,
+  ) async {
     await storage.addProfile('Levon');
     await storage.addProfile('Anna');
     final levon = (await storage.loadProfiles())[0];
@@ -44,17 +47,20 @@ void main() {
     await tester.tap(find.byKey(ValueKey('seat_0_${levon.id}')));
     await tester.pumpAndSettle();
 
-    final seat0Chip =
-        tester.widget<ChoiceChip>(find.byKey(ValueKey('seat_0_${levon.id}')));
+    final seat0Chip = tester.widget<ChoiceChip>(
+      find.byKey(ValueKey('seat_0_${levon.id}')),
+    );
     expect(seat0Chip.selected, isTrue);
 
-    final seat1Chip =
-        tester.widget<ChoiceChip>(find.byKey(ValueKey('seat_1_${levon.id}')));
+    final seat1Chip = tester.widget<ChoiceChip>(
+      find.byKey(ValueKey('seat_1_${levon.id}')),
+    );
     expect(seat1Chip.onSelected, isNull); // disabled: taken by seat 0
   });
 
-  testWidgets('Start match opens the game with the chosen lineup',
-      (tester) async {
+  testWidgets('Start match opens the game with the chosen lineup', (
+    tester,
+  ) async {
     await storage.addProfile('Levon');
     await storage.addProfile('Anna');
     final levon = (await storage.loadProfiles())[0];
