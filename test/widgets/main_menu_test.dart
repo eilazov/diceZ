@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dice_zee/models/game_mode.dart';
+import 'package:dice_zee/models/game_result.dart';
+import 'package:dice_zee/models/score_card.dart';
 import 'package:dice_zee/services/auth_service.dart';
-import 'package:dice_zee/services/player_storage.dart';
+import 'package:dice_zee/services/game_storage.dart';
 import 'package:dice_zee/widgets/account_screen.dart';
-import 'package:dice_zee/widgets/game_screen.dart';
 import 'package:dice_zee/widgets/main_menu.dart';
-import 'package:dice_zee/widgets/player_select_screen.dart';
+import 'package:dice_zee/widgets/play_menu_screen.dart';
 import 'package:dice_zee/widgets/players_screen.dart';
 import 'package:dice_zee/widgets/statistics_screen.dart';
 
@@ -16,69 +18,25 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  testWidgets('offers a 2, 3 and 4 player choice', (tester) async {
+  testWidgets('Play opens the play menu', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(SegmentedButton<int>, '2'), findsOneWidget);
-    expect(find.text('3'), findsOneWidget);
-    expect(find.text('4'), findsOneWidget);
-    expect(find.byKey(const ValueKey('start_button')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('play_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PlayMenuScreen), findsOneWidget);
   });
 
-  testWidgets(
-    'starting with no profiles registered opens the game with an all-guest lineup',
-    (tester) async {
-      await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text('3'));
-      await tester.pump();
-      await tester.tap(find.byKey(const ValueKey('start_button')));
-      await tester.pumpAndSettle();
-
-      final screen = tester.widget<GameScreen>(find.byType(GameScreen));
-      expect(screen.lineup, [null, null, null]);
-    },
-  );
-
-  testWidgets(
-    'starting with exactly one profile seats it first, no selection screen',
-    (tester) async {
-      const playerStorage = PlayerStorage();
-      await playerStorage.addProfile('Levon');
-      final levon = (await playerStorage.loadProfiles()).single;
-
-      await tester.pumpWidget(
-        const MaterialApp(home: MainMenuScreen(playerStorage: playerStorage)),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('start_button')));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(PlayerSelectScreen), findsNothing);
-      final screen = tester.widget<GameScreen>(find.byType(GameScreen));
-      expect(screen.lineup, [levon, null]);
-    },
-  );
-
-  testWidgets('starting with 2+ profiles opens the player select screen', (
+  testWidgets('the main menu no longer starts a match directly', (
     tester,
   ) async {
-    const playerStorage = PlayerStorage();
-    await playerStorage.addProfile('Levon');
-    await playerStorage.addProfile('Anna');
-
-    await tester.pumpWidget(
-      const MaterialApp(home: MainMenuScreen(playerStorage: playerStorage)),
-    );
+    await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('start_button')));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(PlayerSelectScreen), findsOneWidget);
+    expect(find.text('Play'), findsOneWidget);
+    expect(find.text('Start'), findsNothing);
+    expect(find.byType(SegmentedButton<int>), findsNothing);
   });
 
   testWidgets('the statistics button opens the statistics screen', (
@@ -101,6 +59,32 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(PlayersScreen), findsOneWidget);
+  });
+
+  testWidgets('shows the best game per mode that has been played', (
+    tester,
+  ) async {
+    GameResult game(GameMode mode, int chance) => GameResult(
+      playedAt: DateTime.utc(2026, 1, chance),
+      playerCount: 1,
+      mode: mode,
+      players: [
+        PlayerScore(
+          categoryScores: {
+            for (final c in ScoreCategory.values) c: 0,
+            ScoreCategory.chance: chance,
+          },
+        ),
+      ],
+    );
+    await const GameStorage().saveResult(game(GameMode.standard, 20));
+    await const GameStorage().saveResult(game(GameMode.standard, 25));
+
+    await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Standard best · 25'), findsOneWidget);
+    expect(find.byKey(const ValueKey('best_extended')), findsNothing);
   });
 
   testWidgets('Account button opens the account screen', (tester) async {

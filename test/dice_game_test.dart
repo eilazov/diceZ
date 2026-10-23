@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dice_zee/models/dice_game.dart';
+import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/models/score_card.dart';
 
 /// Play one full turn for the current player: roll once, then commit [category].
@@ -172,6 +173,31 @@ void main() {
         final best = standings[0] > standings[1] ? 0 : 1;
         expect(game.winner, best);
       }
+    });
+  });
+
+  group('standard mode', () {
+    test('lasts 13 rounds and ends when every card has 13 categories', () {
+      final game = DiceGame(
+        playerCount: 2,
+        mode: GameMode.standard,
+        random: Random(1),
+      );
+      expect(game.roundCount, 13);
+
+      for (final category in GameMode.standard.categories) {
+        expect(game.isOver, isFalse);
+        for (var p = 0; p < 2; p++) {
+          game.roll();
+          game.commitScore(category);
+        }
+      }
+      expect(game.isOver, isTrue);
+      expect(game.round, 14);
+    });
+
+    test('extended mode still lasts 15 rounds', () {
+      expect(DiceGame(playerCount: 2).roundCount, 15);
     });
   });
 }

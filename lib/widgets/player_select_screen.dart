@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/game_mode.dart';
 import '../models/player_profile.dart';
 import '../seat_palette.dart';
 import '../services/player_storage.dart';
@@ -11,10 +12,12 @@ class PlayerSelectScreen extends StatefulWidget {
   const PlayerSelectScreen({
     super.key,
     required this.playerCount,
+    this.mode = GameMode.extended,
     this.storage = const PlayerStorage(),
   });
 
   final int playerCount;
+  final GameMode mode;
   final PlayerStorage storage;
 
   @override
@@ -33,7 +36,7 @@ class _PlayerSelectScreenState extends State<PlayerSelectScreen> {
 
   void _start() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => GameScreen(lineup: List.of(_seats))),
+      MaterialPageRoute(builder: (_) => GameScreen(lineup: List.of(_seats), mode: widget.mode)),
     );
   }
 

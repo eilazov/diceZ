@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/models/game_result.dart';
 import 'package:dice_zee/models/player_profile.dart';
 import 'package:dice_zee/models/score_card.dart';
@@ -210,5 +211,34 @@ void main() {
     await changes;
 
     expect(await games.loadHistory(), hasLength(1));
+  });
+
+  test('a pulled standard match keeps its mode and upper bonus', () async {
+    store.matches.add(GameResult(
+      playedAt: DateTime.utc(2026, 1, 1),
+      playerCount: 1,
+      mode: GameMode.standard,
+      players: [
+        PlayerScore(
+          categoryScores: {for (final c in ScoreCategory.values) c: 1},
+          upperBonus: 35,
+        ),
+      ],
+    ));
+
+    await sync.pull(store, 'uid1');
+
+    final pulled = (await games.loadHistory()).single;
+    expect(pulled.mode, GameMode.standard);
+    expect(pulled.players.single.upperBonus, 35);
+  });
+
+  test('matches stored without a mode (older versions) sync as extended',
+      () async {
+    await games.saveResult(match(1));
+
+    await sync.pull(store, 'uid1');
+
+    expect(store.matches.single.mode, GameMode.extended);
   });
 }

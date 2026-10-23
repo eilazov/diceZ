@@ -1,28 +1,26 @@
 /// Pure scoring logic for Dice Zee. No Flutter dependencies.
 library;
 
-/// The 15 categories on a Dice Zee score sheet, in sheet order.
-enum ScoreCategory {
-  ones,
-  twos,
-  threes,
-  fours,
-  fives,
-  sixes,
-  onePair,
-  twoPairs,
-  threeOfAKind,
-  fourOfAKind,
-  fullHouse,
-  smallStraight,
-  largeStraight,
-  yahtzee,
-  chance,
-}
+import 'game_mode.dart';
+import 'score_category.dart';
+
+export 'score_category.dart';
 
 /// Holds the committed score for each category and computes category scores.
 class ScoreCard {
+  ScoreCard({this.mode = GameMode.extended});
+
+  final GameMode mode;
   final Map<ScoreCategory, int> _committed = {};
+
+  static const List<ScoreCategory> _upper = [
+    ScoreCategory.ones,
+    ScoreCategory.twos,
+    ScoreCategory.threes,
+    ScoreCategory.fours,
+    ScoreCategory.fives,
+    ScoreCategory.sixes,
+  ];
 
   /// Whether [category] has already been scored this game.
   bool isFilled(ScoreCategory category) => _committed.containsKey(category);
@@ -30,23 +28,54 @@ class ScoreCard {
   /// The committed score for [category], or null if it is still open.
   int? scoreOf(ScoreCategory category) => _committed[category];
 
-  /// Sum of every committed category.
-  int get total => _committed.values.fold(0, (a, b) => a + b);
+  /// Sum of ones through sixes committed so far.
+  int get upperSum => _upper.fold(0, (sum, c) => sum + (_committed[c] ?? 0));
 
-  /// Whether all 15 categories have been committed.
-  bool get isComplete => _committed.length == ScoreCategory.values.length;
+  /// The upper-section bonus: [GameMode.upperBonusValue] once [upperSum]
+  /// reaches [GameMode.upperBonusThreshold] in a mode that has one.
+  int get upperBonus =>
+      mode.hasUpperBonus && upperSum >= GameMode.upperBonusThreshold
+          ? GameMode.upperBonusValue
+          : 0;
+
+  /// Every committed category plus the upper bonus.
+  int get total => _committed.values.fold(0, (a, b) => a + b) + upperBonus;
+
+  /// Whether every category on this mode's sheet has been committed.
+  bool get isComplete => mode.categories.every(isFilled);
+
+  /// What [dice] would score in [category] on this card right now. In
+  /// standard mode a Dice Zee rolled after the Dice Zee box is filled (even
+  /// with 0) is worth 50 in any open category.
+  int potentialScore(ScoreCategory category, List<int> dice) {
+    if (mode == GameMode.standard &&
+        isFilled(ScoreCategory.yahtzee) &&
+        _facesWithAtLeast(dice, 5).isNotEmpty) {
+      return 50;
+    }
+    return score(category, dice, mode: mode);
+  }
 
   /// Score [dice] for [category] and lock it in. Throws [StateError] if the
-  /// category was already committed.
+  /// category was already committed, [ArgumentError] if it is not on this
+  /// mode's sheet.
   void commit(ScoreCategory category, List<int> dice) {
+    if (!mode.categories.contains(category)) {
+      throw ArgumentError('$category is not on the ${mode.name} sheet');
+    }
     if (isFilled(category)) {
       throw StateError('$category is already scored');
     }
-    _committed[category] = score(category, dice);
+    _committed[category] = potentialScore(category, dice);
   }
 
   /// Score [dice] (five values in 1..6) for [category]. Pure; does not mutate.
-  static int score(ScoreCategory category, List<int> dice) {
+  static int score(
+    ScoreCategory category,
+    List<int> dice, {
+    GameMode mode = GameMode.extended,
+  }) {
+    final standard = mode == GameMode.standard;
     switch (category) {
       case ScoreCategory.ones:
         return _faceTotal(dice, 1);
@@ -71,18 +100,20 @@ class ScoreCard {
       case ScoreCategory.fourOfAKind:
         return _facesWithAtLeast(dice, 4).isEmpty ? 0 : _sum(dice);
       case ScoreCategory.yahtzee:
-        return _facesWithAtLeast(dice, 5).isEmpty ? 0 : 100;
+        return _facesWithAtLeast(dice, 5).isEmpty ? 0 : (standard ? 50 : 100);
       case ScoreCategory.chance:
         return _sum(dice);
       case ScoreCategory.fullHouse:
         final pairs = _facesWithAtLeast(dice, 2);
         final triples = _facesWithAtLeast(dice, 3);
         final hasFive = _facesWithAtLeast(dice, 5).isNotEmpty;
-        return (!hasFive && triples.length == 1 && pairs.length == 2) ? 30 : 0;
+        return (!hasFive && triples.length == 1 && pairs.length == 2)
+            ? (standard ? 25 : 30)
+            : 0;
       case ScoreCategory.smallStraight:
-        return _containsRun(dice, 4) ? 40 : 0;
+        return _containsRun(dice, 4) ? (standard ? 30 : 40) : 0;
       case ScoreCategory.largeStraight:
-        return _containsRun(dice, 5) ? 50 : 0;
+        return _containsRun(dice, 5) ? (standard ? 40 : 50) : 0;
     }
   }
 

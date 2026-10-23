@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/models/game_result.dart';
 import 'package:dice_zee/models/score_card.dart';
 import 'package:dice_zee/services/game_storage.dart';
@@ -18,8 +19,8 @@ void main() {
   const playerStorage = PlayerStorage();
 
   Widget subject() => const MaterialApp(
-        home: StatisticsScreen(storage: storage, playerStorage: playerStorage),
-      );
+    home: StatisticsScreen(storage: storage, playerStorage: playerStorage),
+  );
 
   testWidgets('always lists an Everyone row', (tester) async {
     await tester.pumpWidget(subject());
@@ -40,29 +41,34 @@ void main() {
     expect(find.text('Anna'), findsOneWidget);
   });
 
-  testWidgets("a profile row shows its own game and win counts",
-      (tester) async {
+  testWidgets("a profile row shows its own game and win counts", (
+    tester,
+  ) async {
     await playerStorage.addProfile('Levon');
     final levon = (await playerStorage.loadProfiles()).single;
 
-    await storage.saveResult(GameResult(
-      playedAt: DateTime.utc(2026, 9, 7),
-      playerCount: 2,
-      players: [
-        PlayerScore(
-          categoryScores: {
-            for (final c in ScoreCategory.values) c: 0,
-            ScoreCategory.yahtzee: 100,
-          },
-          profileId: levon.id,
-          name: levon.name,
-        ), // total 100, winner
-        PlayerScore(categoryScores: {
-          for (final c in ScoreCategory.values) c: 0,
-          ScoreCategory.sixes: 30,
-        }), // total 30, guest
-      ],
-    ));
+    await storage.saveResult(
+      GameResult(
+        playedAt: DateTime.utc(2026, 9, 7),
+        playerCount: 2,
+        players: [
+          PlayerScore(
+            categoryScores: {
+              for (final c in ScoreCategory.values) c: 0,
+              ScoreCategory.yahtzee: 100,
+            },
+            profileId: levon.id,
+            name: levon.name,
+          ), // total 100, winner
+          PlayerScore(
+            categoryScores: {
+              for (final c in ScoreCategory.values) c: 0,
+              ScoreCategory.sixes: 30,
+            },
+          ), // total 30, guest
+        ],
+      ),
+    );
 
     await tester.pumpWidget(subject());
     await tester.pumpAndSettle();
@@ -79,5 +85,64 @@ void main() {
 
     expect(find.byType(PlayerStatsScreen), findsOneWidget);
     expect(find.text('No games played yet.'), findsOneWidget);
+  });
+
+  group('game mode', () {
+    GameResult played(GameMode mode, int day) => GameResult(
+      playedAt: DateTime.utc(2026, 1, day),
+      playerCount: 2,
+      mode: mode,
+      players: [
+        PlayerScore(
+          categoryScores: {for (final c in ScoreCategory.values) c: 0},
+        ),
+        PlayerScore(
+          categoryScores: {for (final c in ScoreCategory.values) c: 0},
+        ),
+      ],
+    );
+
+    Finder everyoneGames(String text) => find.descendant(
+      of: find.byKey(const ValueKey('stats_everyone')),
+      matching: find.text(text),
+    );
+
+    testWidgets('defaults to the mode of the latest match', (tester) async {
+      await storage.saveResult(played(GameMode.standard, 1));
+      await storage.saveResult(played(GameMode.extended, 2));
+      await storage.saveResult(played(GameMode.extended, 3));
+
+      await tester.pumpWidget(subject());
+      await tester.pumpAndSettle();
+
+      expect(everyoneGames('2 games'), findsOneWidget);
+    });
+
+    testWidgets('switching mode recounts games for that mode', (tester) async {
+      await storage.saveResult(played(GameMode.standard, 1));
+      await storage.saveResult(played(GameMode.extended, 2));
+      await storage.saveResult(played(GameMode.extended, 3));
+
+      await tester.pumpWidget(subject());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Standard'));
+      await tester.pumpAndSettle();
+
+      expect(everyoneGames('1 games'), findsOneWidget);
+    });
+
+    testWidgets('the stats page opens for the selected mode', (tester) async {
+      await storage.saveResult(played(GameMode.standard, 1));
+
+      await tester.pumpWidget(subject());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('stats_everyone')));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<PlayerStatsScreen>(find.byType(PlayerStatsScreen)).mode,
+        GameMode.standard,
+      );
+    });
   });
 }

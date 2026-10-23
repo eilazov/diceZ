@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/models/score_card.dart';
 
 void main() {
@@ -193,6 +194,123 @@ void main() {
         card.commit(category, [1, 2, 3, 4, 5]);
       }
       expect(card.isComplete, isTrue);
+    });
+  });
+
+  group('standard mode scoring', () {
+    int std(ScoreCategory c, List<int> dice) =>
+        ScoreCard.score(c, dice, mode: GameMode.standard);
+
+    test('Dice Zee is worth 50', () {
+      expect(std(ScoreCategory.yahtzee, [3, 3, 3, 3, 3]), 50);
+      expect(std(ScoreCategory.yahtzee, [3, 3, 3, 3, 4]), 0);
+    });
+
+    test('full house 25, small straight 30, large straight 40', () {
+      expect(std(ScoreCategory.fullHouse, [2, 2, 3, 3, 3]), 25);
+      expect(std(ScoreCategory.smallStraight, [1, 2, 3, 4, 6]), 30);
+      expect(std(ScoreCategory.largeStraight, [2, 3, 4, 5, 6]), 40);
+    });
+
+    test('extended values are unchanged', () {
+      expect(ScoreCard.score(ScoreCategory.yahtzee, [3, 3, 3, 3, 3]), 100);
+      expect(ScoreCard.score(ScoreCategory.fullHouse, [2, 2, 3, 3, 3]), 30);
+    });
+  });
+
+  group('standard mode card', () {
+    ScoreCard card() => ScoreCard(mode: GameMode.standard);
+
+    test('rejects categories that are not on the standard sheet', () {
+      expect(
+        () => card().commit(ScoreCategory.onePair, [1, 1, 2, 3, 4]),
+        throwsArgumentError,
+      );
+    });
+
+    test('is complete after the 13 standard categories', () {
+      final c = card();
+      for (final category in GameMode.standard.categories) {
+        expect(c.isComplete, isFalse);
+        c.commit(category, [1, 2, 3, 4, 6]);
+      }
+      expect(c.isComplete, isTrue);
+    });
+
+    test('upper section at 63 or more earns a 35 bonus in the total', () {
+      final c = card();
+      c.commit(ScoreCategory.ones, [1, 1, 1, 5, 6]); // 3
+      c.commit(ScoreCategory.twos, [2, 2, 2, 5, 6]); // 6
+      c.commit(ScoreCategory.threes, [3, 3, 3, 5, 6]); // 9
+      c.commit(ScoreCategory.fours, [4, 4, 4, 5, 6]); // 12
+      c.commit(ScoreCategory.fives, [5, 5, 5, 1, 6]); // 15
+      expect(c.upperBonus, 0);
+      c.commit(ScoreCategory.sixes, [6, 6, 6, 1, 2]); // 18 -> 63
+      expect(c.upperSum, 63);
+      expect(c.upperBonus, 35);
+      expect(c.total, 63 + 35);
+    });
+
+    test('62 earns no bonus', () {
+      final c = card();
+      c.commit(ScoreCategory.ones, [1, 1, 1, 5, 6]); // 3
+      c.commit(ScoreCategory.twos, [2, 2, 2, 5, 6]); // 6
+      c.commit(ScoreCategory.threes, [3, 3, 3, 5, 6]); // 9
+      c.commit(ScoreCategory.fours, [4, 4, 4, 5, 6]); // 12
+      c.commit(ScoreCategory.fives, [5, 5, 5, 1, 6]); // 15
+      c.commit(ScoreCategory.sixes, [6, 6, 1, 1, 2]); // 12 -> 57
+      expect(c.upperBonus, 0);
+      expect(c.total, 57);
+    });
+
+    test('extended cards never get the bonus', () {
+      final c = ScoreCard();
+      for (final category in [
+        ScoreCategory.sixes,
+        ScoreCategory.fives,
+        ScoreCategory.fours,
+        ScoreCategory.threes,
+        ScoreCategory.twos,
+        ScoreCategory.ones,
+      ]) {
+        c.commit(category, [1, 2, 3, 4, 5]);
+      }
+      expect(c.upperBonus, 0);
+    });
+
+    test('a Dice Zee after the Dice Zee box is filled scores 50 anywhere', () {
+      final c = card();
+      c.commit(ScoreCategory.yahtzee, [2, 2, 2, 2, 2]);
+      expect(c.potentialScore(ScoreCategory.chance, [4, 4, 4, 4, 4]), 50);
+      expect(c.potentialScore(ScoreCategory.sixes, [6, 6, 6, 6, 6]), 50);
+      expect(c.potentialScore(ScoreCategory.fullHouse, [4, 4, 4, 4, 4]), 50);
+
+      c.commit(ScoreCategory.smallStraight, [5, 5, 5, 5, 5]);
+      expect(c.scoreOf(ScoreCategory.smallStraight), 50);
+    });
+
+    test('a scratched (0) Dice Zee box still enables the 50 rule', () {
+      final c = card();
+      c.commit(ScoreCategory.yahtzee, [1, 2, 3, 4, 6]);
+      expect(c.potentialScore(ScoreCategory.chance, [4, 4, 4, 4, 4]), 50);
+    });
+
+    test('without a filled Dice Zee box dice score normally', () {
+      final c = card();
+      expect(c.potentialScore(ScoreCategory.chance, [4, 4, 4, 4, 4]), 20);
+      expect(c.potentialScore(ScoreCategory.yahtzee, [4, 4, 4, 4, 4]), 50);
+    });
+
+    test('non-Dice-Zee dice score normally even when the box is filled', () {
+      final c = card();
+      c.commit(ScoreCategory.yahtzee, [2, 2, 2, 2, 2]);
+      expect(c.potentialScore(ScoreCategory.chance, [1, 2, 3, 4, 5]), 15);
+    });
+
+    test('extended mode has no joker rule', () {
+      final c = ScoreCard();
+      c.commit(ScoreCategory.yahtzee, [2, 2, 2, 2, 2]);
+      expect(c.potentialScore(ScoreCategory.chance, [4, 4, 4, 4, 4]), 20);
     });
   });
 }

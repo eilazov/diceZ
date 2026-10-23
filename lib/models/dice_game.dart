@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'game_mode.dart';
 import 'score_card.dart';
 
 /// Dice per roll.
@@ -8,17 +9,25 @@ const int _diceCount = 5;
 /// Rolls allowed at the start of each turn.
 const int _rollsPerTurn = 3;
 
-/// A 2–4 player hot-seat match: 15 rounds, each player taking a turn of up to
+/// A 2–4 player hot-seat match: one round per category of its [GameMode], each player taking a turn of up to
 /// 3 rolls of 5 dice with holds before committing to one of their categories.
 ///
 /// Pure Dart, no Flutter. The RNG is injectable so tests are deterministic.
 class DiceGame {
-  DiceGame({required this.playerCount, Random? random})
+  DiceGame({
+    required this.playerCount,
+    this.mode = GameMode.extended,
+    Random? random,
+  })
       : assert(playerCount >= 2 && playerCount <= 4),
         _random = random ?? Random(),
-        _cards = List.generate(playerCount, (_) => ScoreCard());
+        _cards = List.generate(playerCount, (_) => ScoreCard(mode: mode));
 
   final int playerCount;
+  final GameMode mode;
+
+  /// Rounds in this match (one per category on the sheet).
+  int get roundCount => mode.rounds;
   final Random _random;
   final List<ScoreCard> _cards;
 
@@ -29,7 +38,8 @@ class DiceGame {
   final List<int> _dice = List<int>.filled(_diceCount, 1);
   final List<bool> _held = List<bool>.filled(_diceCount, false);
 
-  /// Current round, 1.._roundCount while playing; _roundCount + 1 once complete.
+  /// Current round, 1..[roundCount] while playing; [roundCount] + 1 once
+  /// complete.
   int get round => _round;
 
   /// Seat whose turn it is, 0-based.
