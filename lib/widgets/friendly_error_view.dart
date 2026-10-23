@@ -12,10 +12,7 @@ import 'package:flutter/services.dart';
 /// Adapts to the space the broken widget occupied: a full layout when there
 /// is room, an icon-only badge inside small slots.
 class FriendlyErrorView extends StatefulWidget {
-  const FriendlyErrorView({
-    super.key,
-    required this.details,
-  });
+  const FriendlyErrorView({super.key, required this.details});
 
   final FlutterErrorDetails details;
 
@@ -73,7 +70,8 @@ class _FriendlyErrorViewState extends State<FriendlyErrorView> {
               onLongPress: _copy,
               child: LayoutBuilder(
                 builder: (context, c) {
-                  final bool full = c.maxHeight.isFinite &&
+                  final bool full =
+                      c.maxHeight.isFinite &&
                       c.maxHeight >= 320 &&
                       c.maxWidth.isFinite &&
                       c.maxWidth >= 300;
@@ -88,10 +86,7 @@ class _FriendlyErrorViewState extends State<FriendlyErrorView> {
                       borderRadius: BorderRadius.circular(full ? 0 : 28),
                     ),
                     child: full
-                        ? _FullView(
-                            details: widget.details,
-                            copied: _copied,
-                          )
+                        ? _FullView(details: widget.details, copied: _copied)
                         : _CompactView(
                             details: widget.details,
                             copied: _copied,
@@ -108,10 +103,7 @@ class _FriendlyErrorViewState extends State<FriendlyErrorView> {
 }
 
 class _FullView extends StatelessWidget {
-  const _FullView({
-    required this.details,
-    required this.copied,
-  });
+  const _FullView({required this.details, required this.copied});
 
   final FlutterErrorDetails details;
   final bool copied;
@@ -124,10 +116,7 @@ class _FullView extends StatelessWidget {
     final Widget header = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _Badge(
-          size: 104,
-          copied: copied,
-        ),
+        _Badge(size: 104, copied: copied),
         const SizedBox(height: 24),
         Text(
           'Something went wrong',
@@ -184,10 +173,7 @@ class _FullView extends StatelessWidget {
 }
 
 class _CompactView extends StatelessWidget {
-  const _CompactView({
-    required this.details,
-    required this.copied,
-  });
+  const _CompactView({required this.details, required this.copied});
 
   final FlutterErrorDetails details;
   final bool copied;
@@ -202,10 +188,7 @@ class _CompactView extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _Badge(
-                size: 48,
-                copied: copied,
-              ),
+              _Badge(size: 48, copied: copied),
               if (kDebugMode) ...[
                 const SizedBox(height: 8),
                 SizedBox(
@@ -228,10 +211,7 @@ class _CompactView extends StatelessWidget {
 /// The badge briefly swaps its "!" for a check after the hidden long-press
 /// copy gesture, so regular users never see a hint.
 class _Badge extends StatelessWidget {
-  const _Badge({
-    required this.size,
-    required this.copied,
-  });
+  const _Badge({required this.size, required this.copied});
 
   final double size;
   final bool copied;

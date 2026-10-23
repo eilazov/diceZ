@@ -6,33 +6,33 @@ import '../seat_palette.dart';
 
 /// Full category label, for places with room (e.g. the statistics screen).
 String categoryLabel(ScoreCategory category) => switch (category) {
-      ScoreCategory.ones => 'Ones',
-      ScoreCategory.twos => 'Twos',
-      ScoreCategory.threes => 'Threes',
-      ScoreCategory.fours => 'Fours',
-      ScoreCategory.fives => 'Fives',
-      ScoreCategory.sixes => 'Sixes',
-      ScoreCategory.onePair => 'One pair',
-      ScoreCategory.twoPairs => 'Two pairs',
-      ScoreCategory.threeOfAKind => 'Three of a kind',
-      ScoreCategory.fourOfAKind => 'Four of a kind',
-      ScoreCategory.fullHouse => 'Full house',
-      ScoreCategory.smallStraight => 'Small straight',
-      ScoreCategory.largeStraight => 'Large straight',
-      ScoreCategory.yahtzee => 'Dice Zee',
-      ScoreCategory.chance => 'Chance',
-    };
+  ScoreCategory.ones => 'Ones',
+  ScoreCategory.twos => 'Twos',
+  ScoreCategory.threes => 'Threes',
+  ScoreCategory.fours => 'Fours',
+  ScoreCategory.fives => 'Fives',
+  ScoreCategory.sixes => 'Sixes',
+  ScoreCategory.onePair => 'One pair',
+  ScoreCategory.twoPairs => 'Two pairs',
+  ScoreCategory.threeOfAKind => 'Three of a kind',
+  ScoreCategory.fourOfAKind => 'Four of a kind',
+  ScoreCategory.fullHouse => 'Full house',
+  ScoreCategory.smallStraight => 'Small straight',
+  ScoreCategory.largeStraight => 'Large straight',
+  ScoreCategory.yahtzee => 'Dice Zee',
+  ScoreCategory.chance => 'Chance',
+};
 
 /// Compact category label, for the multi-column score table.
 String categoryShortLabel(ScoreCategory category) => switch (category) {
-      ScoreCategory.onePair => '1 pair',
-      ScoreCategory.twoPairs => '2 pairs',
-      ScoreCategory.threeOfAKind => '3 of a kind',
-      ScoreCategory.fourOfAKind => '4 of a kind',
-      ScoreCategory.smallStraight => 'Sm straight',
-      ScoreCategory.largeStraight => 'Lg straight',
-      _ => categoryLabel(category),
-    };
+  ScoreCategory.onePair => '1 pair',
+  ScoreCategory.twoPairs => '2 pairs',
+  ScoreCategory.threeOfAKind => '3 of a kind',
+  ScoreCategory.fourOfAKind => '4 of a kind',
+  ScoreCategory.smallStraight => 'Sm straight',
+  ScoreCategory.largeStraight => 'Lg straight',
+  _ => categoryLabel(category),
+};
 
 /// The six number categories (Ones..Sixes).
 const List<ScoreCategory> _numberCategories = [
@@ -73,9 +73,9 @@ class ScoreTable extends StatelessWidget {
   GameMode get _mode => cards.first.mode;
 
   List<ScoreCategory> get _comboCategories => [
-        for (final c in _mode.categories)
-          if (!_numberCategories.contains(c)) c,
-      ];
+    for (final c in _mode.categories)
+      if (!_numberCategories.contains(c)) c,
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -88,11 +88,13 @@ class ScoreTable extends StatelessWidget {
       children: [
         _headerRow(context),
         _sectionRow(context, 'Numbers', 'section_numbers'),
-        for (final category in _numberCategories) _categoryRow(context, category),
+        for (final category in _numberCategories)
+          _categoryRow(context, category),
         _subtotalRow(context),
         if (_mode.hasUpperBonus) _bonusRow(context),
         _sectionRow(context, 'Combos', 'section_combos'),
-        for (final category in _comboCategories) _categoryRow(context, category),
+        for (final category in _comboCategories)
+          _categoryRow(context, category),
         _totalsRow(context),
       ],
     );
@@ -107,14 +109,16 @@ class ScoreTable extends StatelessWidget {
         for (var p = 0; p < cards.length; p++)
           _Cell(
             key: ValueKey('col_header_$p'),
-            highlightColor:
-                p == currentPlayer ? seat.withValues(alpha: 0.14) : null,
+            highlightColor: p == currentPlayer
+                ? seat.withValues(alpha: 0.14)
+                : null,
             child: Text(
               names?[p] ?? SeatPalette.shortLabel(p),
               style: theme.textTheme.labelLarge?.copyWith(
                 color: p == currentPlayer ? seat : null,
-                fontWeight:
-                    p == currentPlayer ? FontWeight.bold : FontWeight.normal,
+                fontWeight: p == currentPlayer
+                    ? FontWeight.bold
+                    : FontWeight.normal,
               ),
             ),
           ),
@@ -175,11 +179,11 @@ class ScoreTable extends StatelessWidget {
 
   /// A hairline rule under a row, so each value lines up with its category.
   Border _rowRule(ThemeData theme) => Border(
-        bottom: BorderSide(
-          color: theme.dividerColor.withValues(alpha: 0.6),
-          width: 0.5,
-        ),
-      );
+    bottom: BorderSide(
+      color: theme.dividerColor.withValues(alpha: 0.6),
+      width: 0.5,
+    ),
+  );
 
   Widget _scoreCell(BuildContext context, int player, ScoreCategory category) {
     final theme = Theme.of(context);
@@ -235,10 +239,8 @@ class ScoreTable extends StatelessWidget {
 
   TableRow _subtotalRow(BuildContext context) {
     final theme = Theme.of(context);
-    int subtotal(ScoreCard card) => _numberCategories.fold(
-          0,
-          (sum, c) => sum + (card.scoreOf(c) ?? 0),
-        );
+    int subtotal(ScoreCard card) =>
+        _numberCategories.fold(0, (sum, c) => sum + (card.scoreOf(c) ?? 0));
     return TableRow(
       decoration: BoxDecoration(border: _rowRule(theme)),
       children: [
@@ -321,8 +323,9 @@ class ScoreTable extends StatelessWidget {
         for (var p = 0; p < cards.length; p++)
           _Cell(
             key: ValueKey('total_$p'),
-            highlightColor:
-                p == currentPlayer ? seat.withValues(alpha: 0.18) : null,
+            highlightColor: p == currentPlayer
+                ? seat.withValues(alpha: 0.18)
+                : null,
             child: Text(
               '${cards[p].total}',
               style: theme.textTheme.titleSmall?.copyWith(

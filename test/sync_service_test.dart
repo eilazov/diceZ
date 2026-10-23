@@ -214,17 +214,19 @@ void main() {
   });
 
   test('a pulled standard match keeps its mode and upper bonus', () async {
-    store.matches.add(GameResult(
-      playedAt: DateTime.utc(2026, 1, 1),
-      playerCount: 1,
-      mode: GameMode.standard,
-      players: [
-        PlayerScore(
-          categoryScores: {for (final c in ScoreCategory.values) c: 1},
-          upperBonus: 35,
-        ),
-      ],
-    ));
+    store.matches.add(
+      GameResult(
+        playedAt: DateTime.utc(2026, 1, 1),
+        playerCount: 1,
+        mode: GameMode.standard,
+        players: [
+          PlayerScore(
+            categoryScores: {for (final c in ScoreCategory.values) c: 1},
+            upperBonus: 35,
+          ),
+        ],
+      ),
+    );
 
     await sync.pull(store, 'uid1');
 
@@ -233,12 +235,14 @@ void main() {
     expect(pulled.players.single.upperBonus, 35);
   });
 
-  test('matches stored without a mode (older versions) sync as extended',
-      () async {
-    await games.saveResult(match(1));
+  test(
+    'matches stored without a mode (older versions) sync as extended',
+    () async {
+      await games.saveResult(match(1));
 
-    await sync.pull(store, 'uid1');
+      await sync.pull(store, 'uid1');
 
-    expect(store.matches.single.mode, GameMode.extended);
-  });
+      expect(store.matches.single.mode, GameMode.extended);
+    },
+  );
 }

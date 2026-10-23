@@ -60,7 +60,10 @@ class PipFace extends StatelessWidget {
                 child: Container(
                   width: pip,
                   height: pip,
-                  decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
               ),
           ],

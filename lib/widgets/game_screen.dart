@@ -57,10 +57,12 @@ class _GameScreenState extends State<GameScreen> {
   bool _summaryShown = false;
   bool _awaitingHandoff = false;
 
-  String _nameFor(int seat) => widget.lineup[seat]?.name ?? SeatPalette.label(seat);
+  String _nameFor(int seat) =>
+      widget.lineup[seat]?.name ?? SeatPalette.label(seat);
 
-  List<String> get _names =>
-      [for (var p = 0; p < _game.playerCount; p++) _nameFor(p)];
+  List<String> get _names => [
+    for (var p = 0; p < _game.playerCount; p++) _nameFor(p),
+  ];
 
   void _roll() {
     AppHaptics.roll();
@@ -99,22 +101,22 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   GameResult _buildResult() => GameResult(
-        playedAt: DateTime.now(),
-        playerCount: _game.playerCount,
-        mode: widget.mode,
-        players: [
-          for (var p = 0; p < _game.playerCount; p++)
-            PlayerScore(
-              categoryScores: {
-                for (final c in widget.mode.categories)
-                  c: _game.scoreCardFor(p).scoreOf(c) ?? 0,
-              },
-              upperBonus: _game.scoreCardFor(p).upperBonus,
-              profileId: widget.lineup[p]?.id,
-              name: widget.lineup[p]?.name,
-            ),
-        ],
-      );
+    playedAt: DateTime.now(),
+    playerCount: _game.playerCount,
+    mode: widget.mode,
+    players: [
+      for (var p = 0; p < _game.playerCount; p++)
+        PlayerScore(
+          categoryScores: {
+            for (final c in widget.mode.categories)
+              c: _game.scoreCardFor(p).scoreOf(c) ?? 0,
+          },
+          upperBonus: _game.scoreCardFor(p).upperBonus,
+          profileId: widget.lineup[p]?.id,
+          name: widget.lineup[p]?.name,
+        ),
+    ],
+  );
 
   Future<void> _showResults() async {
     final action = await Navigator.of(context).push<ResultsAction>(
@@ -331,8 +333,8 @@ class _ControlDeck extends StatelessWidget {
     final String label = canRoll
         ? 'Roll · $rollsRemaining left'
         : awaitingCommit
-            ? 'Tap a category to score'
-            : 'Roll';
+        ? 'Tap a category to score'
+        : 'Roll';
 
     return Container(
       decoration: BoxDecoration(

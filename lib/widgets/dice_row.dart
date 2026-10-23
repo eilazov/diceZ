@@ -59,9 +59,9 @@ class _DiceRowState extends State<DiceRow> with SingleTickerProviderStateMixin {
   static const double _churn = 0.72;
 
   List<List<int>> _freshReels() => List.generate(
-        widget.dice.length,
-        (_) => List.generate(7, (_) => _rng.nextInt(6) + 1),
-      );
+    widget.dice.length,
+    (_) => List.generate(7, (_) => _rng.nextInt(6) + 1),
+  );
 
   @override
   void didUpdateWidget(covariant DiceRow oldWidget) {
@@ -147,9 +147,10 @@ class _DieBox extends StatelessWidget {
 
     final face = t >= _DiceRowState._churn
         ? finalValue
-        : reel[(t / _DiceRowState._churn * reel.length)
-            .floor()
-            .clamp(0, reel.length - 1)];
+        : reel[(t / _DiceRowState._churn * reel.length).floor().clamp(
+            0,
+            reel.length - 1,
+          )];
 
     final hop = rolling ? -math.sin(t * math.pi) * size * 0.30 : 0.0;
     final rot = rolling ? math.sin(t * math.pi * 3) * (1 - t) * 0.32 : 0.0;
@@ -189,7 +190,11 @@ class _DieBox extends StatelessWidget {
                   Positioned(
                     top: 3,
                     right: 3,
-                    child: Icon(Icons.push_pin, size: size * 0.24, color: accent),
+                    child: Icon(
+                      Icons.push_pin,
+                      size: size * 0.24,
+                      color: accent,
+                    ),
                   ),
               ],
             ),

@@ -30,8 +30,9 @@ class ResultsScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final ranking = List.generate(standings.length, (p) => p)
       ..sort((a, b) => standings[b].compareTo(standings[a]));
-    final accent =
-        winner == null ? theme.colorScheme.primary : SeatPalette.color(winner!);
+    final accent = winner == null
+        ? theme.colorScheme.primary
+        : SeatPalette.color(winner!);
     String nameFor(int seat) => names?[seat] ?? SeatPalette.label(seat);
 
     return Scaffold(

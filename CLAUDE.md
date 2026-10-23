@@ -60,6 +60,15 @@ test/
   widgets/                   one test file per widget.
 ```
 
+## Friends
+
+Signed-in accounts get a 6-char friend code (`FriendCode`, shown on the Account
+page). `FriendsScreen` searches by code, sends/accepts/declines requests, lists
+friends. Logic lives in `FriendService` over the `FriendStore` interface
+(`FirestoreFriendStore` in prod, `test/support/in_memory_friend_store.dart` in
+tests). Firestore layout and security rules: `firestore.rules` (must be
+deployed/merged by hand).
+
 ## State management & navigation
 
 Plain `StatefulWidget` + `setState`. `GameScreen` holds one `DiceGame` and rebuilds

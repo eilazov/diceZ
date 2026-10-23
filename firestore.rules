@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// Deploy with: firebase deploy --only firestore:rules
+// Merge with any existing rules for users/{uid}/matches and users/{uid}.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    // Friend code lookup: anyone signed in can resolve a code; only the
+    // owner can claim one, and codes can't be reassigned.
+    match /friendCodes/{code} {
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+
+      match /matches/{id} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+      }
+
+      match /friends/{friendUid} {
+        allow read, delete: if signedIn() &&
+          (request.auth.uid == uid || request.auth.uid == friendUid);
+        // Own list: any write by the owner. Someone else's list: only the
+        // person being added, and only when the owner has a pending request
+        // to them.
+        allow create: if signedIn() && (request.auth.uid == uid ||
+          (request.auth.uid == friendUid &&
+           exists(/databases/$(database)/documents/users/$(uid)/sentRequests/$(request.auth.uid))));
+      }
+
+      // Inbox: the sender writes it, and must have their own sentRequests entry.
+      match /friendRequests/{fromUid} {
+        allow read, delete: if signedIn() &&
+          (request.auth.uid == uid || request.auth.uid == fromUid);
+        allow create: if signedIn() && request.auth.uid == fromUid &&
+          exists(/databases/$(database)/documents/users/$(fromUid)/sentRequests/$(uid));
+      }
+
+      match /sentRequests/{toUid} {
+        allow read, write: if signedIn() && request.auth.uid == uid;
+        // The recipient can clear it when declining or accepting.
+        allow delete: if signedIn() && request.auth.uid == toUid;
+      }
+    }
+  }
+}
