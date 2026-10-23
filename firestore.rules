@@ -1,47 +1,43 @@
 rules_version = '2';
 
 // Deploy with: firebase deploy --only firestore:rules
-// Merge with any existing rules for users/{uid}/matches and users/{uid}.
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
 
-    // Friend code lookup: anyone signed in can resolve a code; only the
-    // owner can claim one, and codes can't be reassigned.
+    // Existing rule: an account owns everything under its own users/{uid}.
+    match /users/{uid}/{document=**} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Friends. Rules are OR-ed, so these only add cross-account access.
+
+    // Anyone signed in can resolve a code; only its owner can claim one, and
+    // a claimed code can't be overwritten (create only).
     match /friendCodes/{code} {
       allow get: if signedIn();
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
     }
 
     match /users/{uid} {
-      allow read, write: if signedIn() && request.auth.uid == uid;
-
-      match /matches/{id} {
-        allow read, write: if signedIn() && request.auth.uid == uid;
-      }
-
+      // The person being added writes into the requester's friends list, but
+      // only while the requester has a pending request to them.
       match /friends/{friendUid} {
-        allow read, delete: if signedIn() &&
-          (request.auth.uid == uid || request.auth.uid == friendUid);
-        // Own list: any write by the owner. Someone else's list: only the
-        // person being added, and only when the owner has a pending request
-        // to them.
-        allow create: if signedIn() && (request.auth.uid == uid ||
-          (request.auth.uid == friendUid &&
-           exists(/databases/$(database)/documents/users/$(uid)/sentRequests/$(request.auth.uid))));
+        allow create, delete: if signedIn() && request.auth.uid == friendUid &&
+          exists(/databases/$(database)/documents/users/$(uid)/sentRequests/$(request.auth.uid));
+        // Unfriending also clears the other side's entry.
+        allow delete: if signedIn() && request.auth.uid == friendUid;
       }
 
-      // Inbox: the sender writes it, and must have their own sentRequests entry.
+      // The sender drops a request in the recipient's inbox, and can withdraw it.
       match /friendRequests/{fromUid} {
-        allow read, delete: if signedIn() &&
-          (request.auth.uid == uid || request.auth.uid == fromUid);
         allow create: if signedIn() && request.auth.uid == fromUid &&
           exists(/databases/$(database)/documents/users/$(fromUid)/sentRequests/$(uid));
+        allow delete: if signedIn() && request.auth.uid == fromUid;
       }
 
+      // The recipient clears the sender's record when declining or accepting.
       match /sentRequests/{toUid} {
-        allow read, write: if signedIn() && request.auth.uid == uid;
-        // The recipient can clear it when declining or accepting.
         allow delete: if signedIn() && request.auth.uid == toUid;
       }
     }
