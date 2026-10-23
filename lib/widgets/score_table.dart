@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../models/game_mode.dart';
 import '../models/score_card.dart';
 import '../seat_palette.dart';
 
@@ -43,21 +44,8 @@ const List<ScoreCategory> _numberCategories = [
   ScoreCategory.sixes,
 ];
 
-/// The nine combination categories.
-const List<ScoreCategory> _comboCategories = [
-  ScoreCategory.onePair,
-  ScoreCategory.twoPairs,
-  ScoreCategory.threeOfAKind,
-  ScoreCategory.fourOfAKind,
-  ScoreCategory.fullHouse,
-  ScoreCategory.smallStraight,
-  ScoreCategory.largeStraight,
-  ScoreCategory.yahtzee,
-  ScoreCategory.chance,
-];
-
-/// The shared score sheet for every player: the 15 categories (grouped into
-/// Numbers and Combos) plus a totals row, one column per player. The active
+/// The shared score sheet for every player: the mode's categories (grouped
+/// into Numbers and Combos, with the upper bonus in standard mode) plus a totals row, one column per player. The active
 /// player's column carries their seat colour; while they can act, its
 /// still-open cells preview the current dice and commit on tap.
 class ScoreTable extends StatelessWidget {
@@ -82,6 +70,13 @@ class ScoreTable extends StatelessWidget {
 
   Color _seatColor() => SeatPalette.color(currentPlayer);
 
+  GameMode get _mode => cards.first.mode;
+
+  List<ScoreCategory> get _comboCategories => [
+        for (final c in _mode.categories)
+          if (!_numberCategories.contains(c)) c,
+      ];
+
   @override
   Widget build(BuildContext context) {
     return Table(
@@ -95,6 +90,7 @@ class ScoreTable extends StatelessWidget {
         _sectionRow(context, 'Numbers', 'section_numbers'),
         for (final category in _numberCategories) _categoryRow(context, category),
         _subtotalRow(context),
+        if (_mode.hasUpperBonus) _bonusRow(context),
         _sectionRow(context, 'Combos', 'section_combos'),
         for (final category in _comboCategories) _categoryRow(context, category),
         _totalsRow(context),
@@ -219,7 +215,7 @@ class ScoreTable extends StatelessWidget {
             border: Border.all(color: seat.withValues(alpha: 0.55)),
           ),
           child: Text(
-            '${ScoreCard.score(category, currentDice)}',
+            '${cards[currentPlayer].potentialScore(category, currentDice)}',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: seat,
               fontWeight: FontWeight.w700,
@@ -264,6 +260,41 @@ class ScoreTable extends StatelessWidget {
                 : null,
             child: Text(
               '${subtotal(cards[p])}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  TableRow _bonusRow(BuildContext context) {
+    final theme = Theme.of(context);
+    return TableRow(
+      decoration: BoxDecoration(border: _rowRule(theme)),
+      children: [
+        Padding(
+          key: const ValueKey('row_bonus'),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Text(
+            'Bonus (${GameMode.upperBonusThreshold}+)',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        for (var p = 0; p < cards.length; p++)
+          _Cell(
+            key: ValueKey('bonus_$p'),
+            highlightColor: p == currentPlayer
+                ? _seatColor().withValues(alpha: 0.14)
+                : null,
+            child: Text(
+              cards[p].upperBonus > 0
+                  ? '+${cards[p].upperBonus}'
+                  : '${cards[p].upperSum}/${GameMode.upperBonusThreshold}',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
                 fontFeatures: const [FontFeature.tabularFigures()],

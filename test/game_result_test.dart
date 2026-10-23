@@ -1,23 +1,26 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/models/game_result.dart';
 import 'package:dice_zee/models/score_card.dart';
 
 void main() {
   group('PlayerScore', () {
     test('total sums every category score', () {
-      final score = PlayerScore(categoryScores: {
-        for (final c in ScoreCategory.values) c: 0,
-        ScoreCategory.sixes: 18,
-        ScoreCategory.yahtzee: 100,
-      });
+      final score = PlayerScore(
+        categoryScores: {
+          for (final c in ScoreCategory.values) c: 0,
+          ScoreCategory.sixes: 18,
+          ScoreCategory.yahtzee: 100,
+        },
+      );
 
       expect(score.total, 118);
     });
 
     test('round-trips through JSON', () {
-      final score = PlayerScore(categoryScores: {
-        for (final c in ScoreCategory.values) c: c.index,
-      });
+      final score = PlayerScore(
+        categoryScores: {for (final c in ScoreCategory.values) c: c.index},
+      );
 
       final restored = PlayerScore.fromJson(score.toJson());
 
@@ -51,17 +54,17 @@ void main() {
 
   group('GameResult', () {
     GameResult sample() => GameResult(
-          playedAt: DateTime.utc(2026, 9, 7, 15),
-          playerCount: 2,
-          players: [
-            PlayerScore(categoryScores: {
-              for (final c in ScoreCategory.values) c: 1,
-            }),
-            PlayerScore(categoryScores: {
-              for (final c in ScoreCategory.values) c: 2,
-            }),
-          ],
-        );
+      playedAt: DateTime.utc(2026, 9, 7, 15),
+      playerCount: 2,
+      players: [
+        PlayerScore(
+          categoryScores: {for (final c in ScoreCategory.values) c: 1},
+        ),
+        PlayerScore(
+          categoryScores: {for (final c in ScoreCategory.values) c: 2},
+        ),
+      ],
+    );
 
     test('winningScore is the highest player total', () {
       expect(sample().winningScore, 30); // 15 categories * 2
@@ -76,6 +79,42 @@ void main() {
       expect(restored.players, hasLength(2));
       expect(restored.players[0].total, 15);
       expect(restored.players[1].total, 30);
+    });
+  });
+
+  group('game mode', () {
+    PlayerScore score() => PlayerScore(
+      categoryScores: {for (final c in ScoreCategory.values) c: 1},
+      upperBonus: 35,
+    );
+
+    test('a result round-trips its mode', () {
+      final result = GameResult(
+        playedAt: DateTime.utc(2026, 1, 1),
+        playerCount: 1,
+        players: [score()],
+        mode: GameMode.standard,
+      );
+      expect(GameResult.fromJson(result.toJson()).mode, GameMode.standard);
+    });
+
+    test('a result saved before modes existed is extended', () {
+      final json = GameResult(
+        playedAt: DateTime.utc(2026, 1, 1),
+        playerCount: 1,
+        players: [score()],
+      ).toJson()..remove('mode');
+      expect(GameResult.fromJson(json).mode, GameMode.extended);
+    });
+
+    test('the upper bonus counts toward the total and survives JSON', () {
+      expect(score().total, 15 + 35);
+      expect(PlayerScore.fromJson(score().toJson()).upperBonus, 35);
+    });
+
+    test('a missing upperBonus reads as 0', () {
+      final json = score().toJson()..remove('upperBonus');
+      expect(PlayerScore.fromJson(json).upperBonus, 0);
     });
   });
 }

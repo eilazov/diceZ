@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../haptics.dart';
 import '../models/dice_game.dart';
+import '../models/game_mode.dart';
 import '../models/game_result.dart';
 import '../models/player_profile.dart';
 import '../models/score_card.dart';
@@ -25,6 +26,7 @@ class GameScreen extends StatefulWidget {
   const GameScreen({
     super.key,
     required this.lineup,
+    this.mode = GameMode.extended,
     this.storage = const GameStorage(),
     this.random,
   });
@@ -32,6 +34,9 @@ class GameScreen extends StatefulWidget {
   /// One entry per seat, in turn order. A null entry is a guest seat and
   /// falls back to [SeatPalette.label].
   final List<PlayerProfile?> lineup;
+
+  /// The rule set for this match.
+  final GameMode mode;
 
   final GameStorage storage;
 
@@ -45,6 +50,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late final DiceGame _game = DiceGame(
     playerCount: widget.lineup.length,
+    mode: widget.mode,
     random: widget.random,
   );
   int _rollCount = 0;
@@ -95,13 +101,15 @@ class _GameScreenState extends State<GameScreen> {
   GameResult _buildResult() => GameResult(
         playedAt: DateTime.now(),
         playerCount: _game.playerCount,
+        mode: widget.mode,
         players: [
           for (var p = 0; p < _game.playerCount; p++)
             PlayerScore(
               categoryScores: {
-                for (final c in ScoreCategory.values)
+                for (final c in widget.mode.categories)
                   c: _game.scoreCardFor(p).scoreOf(c) ?? 0,
               },
+              upperBonus: _game.scoreCardFor(p).upperBonus,
               profileId: widget.lineup[p]?.id,
               name: widget.lineup[p]?.name,
             ),
@@ -126,6 +134,7 @@ class _GameScreenState extends State<GameScreen> {
         MaterialPageRoute(
           builder: (_) => GameScreen(
             lineup: widget.lineup,
+            mode: widget.mode,
             storage: widget.storage,
           ),
         ),
@@ -151,7 +160,7 @@ class _GameScreenState extends State<GameScreen> {
             padding: const EdgeInsets.only(right: 16),
             child: Center(
               child: Text(
-                'Round ${_game.round.clamp(1, 15)} / 15',
+                'Round ${_game.round.clamp(1, _game.roundCount)} / ${_game.roundCount}',
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),

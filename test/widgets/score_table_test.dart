@@ -1,28 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/models/score_card.dart';
 import 'package:dice_zee/widgets/score_table.dart';
 
 Widget _host(Widget child) => MaterialApp(
-      home: Scaffold(
-        body: SingleChildScrollView(
-          child: SizedBox(width: 380, child: child),
-        ),
-      ),
-    );
+  home: Scaffold(
+    body: SingleChildScrollView(child: SizedBox(width: 380, child: child)),
+  ),
+);
 
 List<ScoreCard> cards(int n) => [for (var i = 0; i < n; i++) ScoreCard()];
 
 void main() {
   testWidgets('renders a column header for every player', (tester) async {
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: cards(3),
-      currentPlayer: 0,
-      currentDice: const [1, 2, 3, 4, 5],
-      canCommit: false,
-      onCommit: (_) {},
-    )));
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: cards(3),
+          currentPlayer: 0,
+          currentDice: const [1, 2, 3, 4, 5],
+          canCommit: false,
+          onCommit: (_) {},
+        ),
+      ),
+    );
 
     expect(find.byKey(const ValueKey('col_header_0')), findsOneWidget);
     expect(find.byKey(const ValueKey('col_header_1')), findsOneWidget);
@@ -30,15 +33,20 @@ void main() {
     expect(find.byKey(const ValueKey('col_header_3')), findsNothing);
   });
 
-  testWidgets('renders a row for every category plus a totals row',
-      (tester) async {
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: cards(2),
-      currentPlayer: 0,
-      currentDice: const [1, 2, 3, 4, 5],
-      canCommit: false,
-      onCommit: (_) {},
-    )));
+  testWidgets('renders a row for every category plus a totals row', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: cards(2),
+          currentPlayer: 0,
+          currentDice: const [1, 2, 3, 4, 5],
+          canCommit: false,
+          onCommit: (_) {},
+        ),
+      ),
+    );
 
     for (final category in ScoreCategory.values) {
       expect(find.byKey(ValueKey('row_${category.name}')), findsOneWidget);
@@ -46,16 +54,21 @@ void main() {
     expect(find.byKey(const ValueKey('row_total')), findsOneWidget);
   });
 
-  testWidgets("the current player's open cell previews and commits on tap",
-      (tester) async {
+  testWidgets("the current player's open cell previews and commits on tap", (
+    tester,
+  ) async {
     ScoreCategory? committed;
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: cards(2),
-      currentPlayer: 0,
-      currentDice: const [3, 3, 3, 2, 2], // full house -> 30
-      canCommit: true,
-      onCommit: (c) => committed = c,
-    )));
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: cards(2),
+          currentPlayer: 0,
+          currentDice: const [3, 3, 3, 2, 2], // full house -> 30
+          canCommit: true,
+          onCommit: (c) => committed = c,
+        ),
+      ),
+    );
 
     final cell = find.byKey(const ValueKey('commit_fullHouse'));
     expect(
@@ -69,46 +82,57 @@ void main() {
   });
 
   testWidgets('only the current player has committable cells', (tester) async {
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: cards(3),
-      currentPlayer: 1,
-      currentDice: const [1, 2, 3, 4, 5],
-      canCommit: true,
-      onCommit: (_) {},
-    )));
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: cards(3),
+          currentPlayer: 1,
+          currentDice: const [1, 2, 3, 4, 5],
+          canCommit: true,
+          onCommit: (_) {},
+        ),
+      ),
+    );
 
     // One committable cell per still-open category, all in player 1's column.
-    expect(
-      find.byKey(const ValueKey('commit_chance')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('commit_chance')), findsOneWidget);
   });
 
-  testWidgets('no cells are committable when canCommit is false',
-      (tester) async {
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: cards(2),
-      currentPlayer: 0,
-      currentDice: const [1, 2, 3, 4, 5],
-      canCommit: false,
-      onCommit: (_) {},
-    )));
+  testWidgets('no cells are committable when canCommit is false', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: cards(2),
+          currentPlayer: 0,
+          currentDice: const [1, 2, 3, 4, 5],
+          canCommit: false,
+          onCommit: (_) {},
+        ),
+      ),
+    );
 
     expect(find.byKey(const ValueKey('commit_chance')), findsNothing);
   });
 
-  testWidgets('a committed score is shown in that player\'s column',
-      (tester) async {
+  testWidgets('a committed score is shown in that player\'s column', (
+    tester,
+  ) async {
     final list = cards(2);
     list[1].commit(ScoreCategory.chance, [6, 6, 6, 1, 1]); // 20
 
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: list,
-      currentPlayer: 0,
-      currentDice: const [1, 1, 1, 1, 1],
-      canCommit: true,
-      onCommit: (_) {},
-    )));
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: list,
+          currentPlayer: 0,
+          currentDice: const [1, 1, 1, 1, 1],
+          canCommit: true,
+          onCommit: (_) {},
+        ),
+      ),
+    );
 
     expect(
       find.descendant(
@@ -119,26 +143,29 @@ void main() {
     );
   });
 
-  testWidgets(
-      "the current player's still-open category labels are emphasised, "
+  testWidgets("the current player's still-open category labels are emphasised, "
       'filled ones are dimmed', (tester) async {
     final list = cards(2);
     list[0].commit(ScoreCategory.chance, [6, 6, 6, 1, 1]);
 
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: list,
-      currentPlayer: 0,
-      currentDice: const [1, 2, 3, 4, 5],
-      canCommit: true,
-      onCommit: (_) {},
-    )));
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: list,
+          currentPlayer: 0,
+          currentDice: const [1, 2, 3, 4, 5],
+          canCommit: true,
+          onCommit: (_) {},
+        ),
+      ),
+    );
 
     Text labelFor(String category) => tester.widget<Text>(
-          find.descendant(
-            of: find.byKey(ValueKey('row_$category')),
-            matching: find.byType(Text),
-          ),
-        );
+      find.descendant(
+        of: find.byKey(ValueKey('row_$category')),
+        matching: find.byType(Text),
+      ),
+    );
 
     // Still open for player 0 -> emphasised.
     expect(labelFor('ones').style?.fontWeight, FontWeight.w600);
@@ -146,16 +173,21 @@ void main() {
     expect(labelFor('chance').style?.fontWeight, isNot(FontWeight.w600));
   });
 
-  testWidgets('uses provided names in the column header when given',
-      (tester) async {
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: cards(2),
-      currentPlayer: 0,
-      currentDice: const [1, 2, 3, 4, 5],
-      canCommit: false,
-      onCommit: (_) {},
-      names: const ['Levon', 'Anna'],
-    )));
+  testWidgets('uses provided names in the column header when given', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: cards(2),
+          currentPlayer: 0,
+          currentDice: const [1, 2, 3, 4, 5],
+          canCommit: false,
+          onCommit: (_) {},
+          names: const ['Levon', 'Anna'],
+        ),
+      ),
+    );
 
     expect(
       find.descendant(
@@ -166,15 +198,20 @@ void main() {
     );
   });
 
-  testWidgets('falls back to short seat labels when no names are given',
-      (tester) async {
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: cards(2),
-      currentPlayer: 0,
-      currentDice: const [1, 2, 3, 4, 5],
-      canCommit: false,
-      onCommit: (_) {},
-    )));
+  testWidgets('falls back to short seat labels when no names are given', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: cards(2),
+          currentPlayer: 0,
+          currentDice: const [1, 2, 3, 4, 5],
+          canCommit: false,
+          onCommit: (_) {},
+        ),
+      ),
+    );
 
     expect(
       find.descendant(
@@ -190,13 +227,17 @@ void main() {
     list[0].commit(ScoreCategory.sixes, [6, 6, 6, 1, 1]); // 18
     list[1].commit(ScoreCategory.fullHouse, [2, 2, 2, 5, 5]); // 30
 
-    await tester.pumpWidget(_host(ScoreTable(
-      cards: list,
-      currentPlayer: 0,
-      currentDice: const [1, 2, 3, 4, 5],
-      canCommit: false,
-      onCommit: (_) {},
-    )));
+    await tester.pumpWidget(
+      _host(
+        ScoreTable(
+          cards: list,
+          currentPlayer: 0,
+          currentDice: const [1, 2, 3, 4, 5],
+          canCommit: false,
+          onCommit: (_) {},
+        ),
+      ),
+    );
 
     expect(
       find.descendant(
@@ -212,5 +253,79 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  group('standard mode', () {
+    List<ScoreCard> standard() => [
+      for (var i = 0; i < 2; i++) ScoreCard(mode: GameMode.standard),
+    ];
+
+    Widget table(List<ScoreCard> cards, {List<int>? dice}) => _host(
+      ScoreTable(
+        cards: cards,
+        currentPlayer: 0,
+        currentDice: dice ?? const [1, 2, 3, 4, 5],
+        canCommit: true,
+        onCommit: (_) {},
+      ),
+    );
+
+    testWidgets('has no pair rows but has a bonus row', (tester) async {
+      await tester.pumpWidget(table(standard()));
+
+      expect(find.byKey(const ValueKey('row_onePair')), findsNothing);
+      expect(find.byKey(const ValueKey('row_twoPairs')), findsNothing);
+      expect(find.byKey(const ValueKey('row_threeOfAKind')), findsOneWidget);
+      expect(find.byKey(const ValueKey('row_bonus')), findsOneWidget);
+    });
+
+    testWidgets('extended has no bonus row', (tester) async {
+      await tester.pumpWidget(table(cards(2)));
+
+      expect(find.byKey(const ValueKey('row_bonus')), findsNothing);
+      expect(find.byKey(const ValueKey('row_onePair')), findsOneWidget);
+    });
+
+    testWidgets('shows progress to the bonus, then the bonus itself', (
+      tester,
+    ) async {
+      final cs = standard();
+      cs[0].commit(ScoreCategory.sixes, [6, 6, 6, 1, 2]); // 18
+      await tester.pumpWidget(table(cs));
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('bonus_0')),
+          matching: find.text('18/63'),
+        ),
+        findsOneWidget,
+      );
+
+      cs[0].commit(ScoreCategory.fives, [5, 5, 5, 5, 5]); // 25 -> 43
+      cs[0].commit(ScoreCategory.fours, [4, 4, 4, 4, 4]); // 20 -> 63
+      await tester.pumpWidget(table(cs));
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('bonus_0')),
+          matching: find.text('+35'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('previews 50 in an open box after the Dice Zee box is filled', (
+      tester,
+    ) async {
+      final cs = standard();
+      cs[0].commit(ScoreCategory.yahtzee, [2, 2, 2, 2, 2]);
+      await tester.pumpWidget(table(cs, dice: const [4, 4, 4, 4, 4]));
+
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('commit_chance')),
+          matching: find.text('50'),
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }

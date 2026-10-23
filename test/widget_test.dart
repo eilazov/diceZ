@@ -11,7 +11,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MainMenuScreen), findsOneWidget);
-    expect(find.text('Start'), findsOneWidget);
+    expect(find.text('Play'), findsOneWidget);
     expect(find.text('Statistics'), findsOneWidget);
   });
 }

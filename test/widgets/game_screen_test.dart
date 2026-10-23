@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/models/player_profile.dart';
 import 'package:dice_zee/models/score_card.dart';
 import 'package:dice_zee/services/game_storage.dart';
@@ -15,30 +16,40 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  Widget subject({int playerCount = 2, List<PlayerProfile?>? lineup}) =>
-      MaterialApp(
-        home: GameScreen(
-          lineup: lineup ?? List<PlayerProfile?>.filled(playerCount, null),
-          storage: const GameStorage(),
-          random: Random(1),
-        ),
-      );
+  Widget subject({
+    int playerCount = 2,
+    List<PlayerProfile?>? lineup,
+    GameMode mode = GameMode.extended,
+  }) => MaterialApp(
+    home: GameScreen(
+      mode: mode,
+      lineup: lineup ?? List<PlayerProfile?>.filled(playerCount, null),
+      storage: const GameStorage(),
+      random: Random(1),
+    ),
+  );
 
   /// A tall viewport so the whole screen fits without scrolling.
   Future<void> pumpTall(
     WidgetTester tester, {
     int playerCount = 2,
     List<PlayerProfile?>? lineup,
+    GameMode mode = GameMode.extended,
   }) async {
     await tester.binding.setSurfaceSize(const Size(900, 2600));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(subject(playerCount: playerCount, lineup: lineup));
+    await tester.pumpWidget(
+      subject(playerCount: playerCount, lineup: lineup, mode: mode),
+    );
   }
 
   final rollButton = find.byKey(const ValueKey('roll_button'));
   final handoffReady = find.byKey(const ValueKey('handoff_ready'));
 
-  Future<void> rollAndCommit(WidgetTester tester, ScoreCategory category) async {
+  Future<void> rollAndCommit(
+    WidgetTester tester,
+    ScoreCategory category,
+  ) async {
     await tester.tap(rollButton);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(ValueKey('commit_${category.name}')));
@@ -57,7 +68,9 @@ void main() {
     expect(find.bySemanticsLabel('3 rolls left'), findsOneWidget);
   });
 
-  testWidgets('no category is committable until the first roll', (tester) async {
+  testWidgets('no category is committable until the first roll', (
+    tester,
+  ) async {
     await tester.pumpWidget(subject());
 
     expect(find.byKey(const ValueKey('commit_chance')), findsNothing);
@@ -73,8 +86,9 @@ void main() {
     expect(find.bySemanticsLabel('2 rolls left'), findsOneWidget);
   });
 
-  testWidgets('committing shows a handoff cover, then the next turn',
-      (tester) async {
+  testWidgets('committing shows a handoff cover, then the next turn', (
+    tester,
+  ) async {
     await pumpTall(tester);
 
     await tester.tap(rollButton);
@@ -93,8 +107,9 @@ void main() {
     expect(find.bySemanticsLabel('3 rolls left'), findsOneWidget);
   });
 
-  testWidgets('lays out on a phone-sized screen with 4 players, no overflow',
-      (tester) async {
+  testWidgets('lays out on a phone-sized screen with 4 players, no overflow', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -106,8 +121,9 @@ void main() {
     expect(find.byKey(const ValueKey('total_3')), findsOneWidget);
   });
 
-  testWidgets('every player total is visible in the shared table',
-      (tester) async {
+  testWidgets('every player total is visible in the shared table', (
+    tester,
+  ) async {
     await pumpTall(tester, playerCount: 3);
 
     expect(find.byKey(const ValueKey('total_0')), findsOneWidget);
@@ -115,8 +131,9 @@ void main() {
     expect(find.byKey(const ValueKey('total_2')), findsOneWidget);
   });
 
-  testWidgets("a seated profile's name replaces the seat's default label",
-      (tester) async {
+  testWidgets("a seated profile's name replaces the seat's default label", (
+    tester,
+  ) async {
     const levon = PlayerProfile(id: '1', name: 'Levon');
     await tester.pumpWidget(subject(lineup: const [levon, null]));
 
@@ -124,26 +141,29 @@ void main() {
     expect(find.text('Player 1'), findsNothing);
   });
 
-  testWidgets('finishing the match saves a result and shows the results screen',
-      (tester) async {
-    await pumpTall(tester);
+  testWidgets(
+    'finishing the match saves a result and shows the results screen',
+    (tester) async {
+      await pumpTall(tester);
 
-    for (final category in ScoreCategory.values) {
-      for (var player = 0; player < 2; player++) {
-        await rollAndCommit(tester, category);
+      for (final category in ScoreCategory.values) {
+        for (var player = 0; player < 2; player++) {
+          await rollAndCommit(tester, category);
+        }
       }
-    }
 
-    expect(find.byType(ResultsScreen), findsOneWidget);
-    expect(find.text('Rematch'), findsOneWidget);
+      expect(find.byType(ResultsScreen), findsOneWidget);
+      expect(find.text('Rematch'), findsOneWidget);
 
-    final history = await const GameStorage().loadHistory();
-    expect(history, hasLength(1));
-    expect(history.single.playerCount, 2);
-  });
+      final history = await const GameStorage().loadHistory();
+      expect(history, hasLength(1));
+      expect(history.single.playerCount, 2);
+    },
+  );
 
-  testWidgets("finishing the match records each seat's profile id and name",
-      (tester) async {
+  testWidgets("finishing the match records each seat's profile id and name", (
+    tester,
+  ) async {
     const levon = PlayerProfile(id: 'p1', name: 'Levon');
     await pumpTall(tester, lineup: const [levon, null]);
 
@@ -160,8 +180,9 @@ void main() {
     expect(history.single.players[1].name, isNull);
   });
 
-  testWidgets('Rematch from the results screen starts a fresh match',
-      (tester) async {
+  testWidgets('Rematch from the results screen starts a fresh match', (
+    tester,
+  ) async {
     await pumpTall(tester);
 
     for (final category in ScoreCategory.values) {
@@ -176,5 +197,55 @@ void main() {
     expect(find.byType(ResultsScreen), findsNothing);
     expect(find.text('Player 1'), findsOneWidget);
     expect(find.text('Round 1 / 15'), findsOneWidget);
+  });
+
+  testWidgets('a standard match has 13 rounds and no pair rows', (
+    tester,
+  ) async {
+    await pumpTall(tester, mode: GameMode.standard);
+
+    expect(find.text('Round 1 / 13'), findsOneWidget);
+    expect(find.byKey(const ValueKey('row_onePair')), findsNothing);
+    expect(find.byKey(const ValueKey('row_twoPairs')), findsNothing);
+    expect(find.byKey(const ValueKey('row_bonus')), findsOneWidget);
+  });
+
+  testWidgets('finishing a standard match saves its mode and card', (
+    tester,
+  ) async {
+    await pumpTall(tester, mode: GameMode.standard);
+
+    for (final category in GameMode.standard.categories) {
+      for (var player = 0; player < 2; player++) {
+        await rollAndCommit(tester, category);
+      }
+    }
+
+    expect(find.byType(ResultsScreen), findsOneWidget);
+    final history = await const GameStorage().loadHistory();
+    expect(history, hasLength(1));
+    expect(history.single.mode, GameMode.standard);
+    final scores = history.single.players.first.categoryScores;
+    // Pairs are not on the standard sheet; stored cards read them back as 0.
+    expect(scores[ScoreCategory.onePair], 0);
+    expect(scores[ScoreCategory.twoPairs], 0);
+    expect(
+      history.single.players.first.total,
+      scores.values.fold(0, (a, b) => a + b) +
+          history.single.players.first.upperBonus,
+    );
+  });
+
+  testWidgets('an extended match still saves as extended', (tester) async {
+    await pumpTall(tester);
+
+    for (final category in ScoreCategory.values) {
+      for (var player = 0; player < 2; player++) {
+        await rollAndCommit(tester, category);
+      }
+    }
+
+    final history = await const GameStorage().loadHistory();
+    expect(history.single.mode, GameMode.extended);
   });
 }

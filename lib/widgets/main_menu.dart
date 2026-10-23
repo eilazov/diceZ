@@ -3,21 +3,19 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/game_result.dart';
-import '../models/player_profile.dart';
+import '../models/game_mode.dart';
 import '../services/auth_service.dart';
 import '../services/game_storage.dart';
 import '../services/player_storage.dart';
 import '../services/sync_service.dart';
 import 'account_screen.dart';
-import 'game_screen.dart';
 import 'pip_face.dart';
-import 'player_select_screen.dart';
+import 'play_menu_screen.dart';
 import 'players_screen.dart';
 import 'statistics_screen.dart';
 import 'version_indicator.dart';
 
-/// App home: pick a player count and start a match, manage players, or view
-/// statistics.
+/// App home: play, view statistics, manage players, or open the account.
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({
     super.key,
@@ -38,7 +36,6 @@ class MainMenuScreen extends StatefulWidget {
 }
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
-  int _count = 2;
   late Future<List<GameResult>> _history = widget.storage.loadHistory();
   StreamSubscription<void>? _syncSub;
 
@@ -57,28 +54,12 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     super.dispose();
   }
 
-  Future<void> _startGame() async {
-    final profiles = await widget.playerStorage.loadProfiles();
-    if (!mounted) return;
-
-    if (profiles.isEmpty) {
-      _openGame(List<PlayerProfile?>.filled(_count, null));
-      return;
-    }
-    if (profiles.length == 1) {
-      _openGame([profiles.single, for (var i = 1; i < _count; i++) null]);
-      return;
-    }
+  void _openPlay() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PlayerSelectScreen(playerCount: _count),
+        builder: (_) => PlayMenuScreen(playerStorage: widget.playerStorage),
       ),
     );
-  }
-
-  void _openGame(List<PlayerProfile?> lineup) {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => GameScreen(lineup: lineup)));
   }
 
   void _openStatistics() {
@@ -134,34 +115,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   ),
                   _BestGameLine(history: _history),
                   const SizedBox(height: 40),
-                  Text(
-                    'Player Count',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Center(
-                    child: SegmentedButton<int>(
-                      segments: const [
-                        ButtonSegment(value: 2, label: Text('2')),
-                        ButtonSegment(value: 3, label: Text('3')),
-                        ButtonSegment(value: 4, label: Text('4')),
-                      ],
-                      selected: {_count},
-                      onSelectionChanged: (s) =>
-                          setState(() => _count = s.first),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
                   FilledButton(
-                    key: const ValueKey('start_button'),
-                    onPressed: _startGame,
+                    key: const ValueKey('play_button'),
+                    onPressed: _openPlay,
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(52),
                     ),
-                    child: const Text('Start'),
+                    child: const Text('Play'),
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
@@ -193,7 +153,8 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 }
 
-/// "Best game · N" once at least one match has been recorded; nothing before.
+/// "Standard best · N" / "Extended best · N" for each mode with at least one
+/// recorded match; nothing before.
 class _BestGameLine extends StatelessWidget {
   const _BestGameLine({required this.history});
 
@@ -207,22 +168,31 @@ class _BestGameLine extends StatelessWidget {
       builder: (context, snapshot) {
         final games = snapshot.data;
         if (games == null || games.isEmpty) return const SizedBox.shrink();
-        final best = games
-            .expand((g) => g.players.map((p) => p.total))
-            .fold(0, (a, b) => a > b ? a : b);
-        return Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: Text(
-            'Best game · $best',
-            textAlign: TextAlign.center,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.primary,
-              fontWeight: FontWeight.w600,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
+        return Column(
+          children: [
+            for (final mode in GameMode.values)
+              if (games.any((g) => g.mode == mode))
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    '${mode.label} best · ${_best(games, mode)}',
+                    key: ValueKey('best_${mode.name}'),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+          ],
         );
       },
     );
   }
+
+  static int _best(List<GameResult> games, GameMode mode) => games
+      .where((g) => g.mode == mode)
+      .expand((g) => g.players.map((p) => p.total))
+      .fold(0, (a, b) => a > b ? a : b);
 }
