@@ -68,6 +68,10 @@ class DiceGame {
   /// Every player's total, indexed by seat.
   List<int> get standings => List.generate(playerCount, (p) => _cards[p].total);
 
+  /// Whether the dice currently show five of a kind (a Dice Zee). False before
+  /// the first roll, when the placeholder dice all read 1.
+  bool get isDiceZee => _hasRolled && _dice.every((d) => d == _dice.first);
+
   /// Whether every player has scored all categories.
   bool get isOver => _cards.every((c) => c.isComplete);
 

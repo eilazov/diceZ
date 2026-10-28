@@ -5,6 +5,8 @@ import 'package:dice_zee/models/dice_game.dart';
 import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/models/score_card.dart';
 
+import 'support/constant_random.dart';
+
 /// Play one full turn for the current player: roll once, then commit [category].
 void playTurn(DiceGame game, ScoreCategory category) {
   game.roll();
@@ -42,6 +44,23 @@ void main() {
         expect(game.scoreCardFor(p).isComplete, isFalse);
         expect(game.totalFor(p), 0);
       }
+    });
+  });
+
+  group('isDiceZee', () {
+    test('is false before the first roll, even though the dice all show 1', () {
+      expect(DiceGame(playerCount: 2).isDiceZee, isFalse);
+    });
+
+    test('is true when a roll lands five of a kind', () {
+      final game = DiceGame(playerCount: 2, random: ConstantRandom(4))..roll();
+      expect(game.isDiceZee, isTrue);
+    });
+
+    test('is false when the dice differ', () {
+      final game = DiceGame(playerCount: 2, random: Random(1))..roll();
+      expect(game.dice.toSet().length > 1, isTrue);
+      expect(game.isDiceZee, isFalse);
     });
   });
 
