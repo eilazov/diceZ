@@ -13,6 +13,24 @@ class ScoreCard {
   final GameMode mode;
   final Map<ScoreCategory, int> _committed = {};
 
+  /// Committed scores by category name; open categories are absent.
+  Map<String, int> toJson() => {
+    for (final e in _committed.entries) e.key.name: e.value,
+  };
+
+  /// Restore a card from [toJson] output. Unknown categories are ignored.
+  factory ScoreCard.fromJson(
+    Map<String, dynamic> json, {
+    GameMode mode = GameMode.extended,
+  }) {
+    final card = ScoreCard(mode: mode);
+    for (final category in mode.categories) {
+      final value = json[category.name];
+      if (value is num) card._committed[category] = value.toInt();
+    }
+    return card;
+  }
+
   static const List<ScoreCategory> _upper = [
     ScoreCategory.ones,
     ScoreCategory.twos,

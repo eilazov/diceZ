@@ -6,9 +6,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dice_zee/models/friend_profile.dart';
 import 'package:dice_zee/services/auth_service.dart';
 import 'package:dice_zee/services/friend_service.dart';
+import 'package:dice_zee/services/online_match_service.dart';
+import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/widgets/friends_screen.dart';
 
 import '../support/in_memory_friend_store.dart';
+import '../support/in_memory_online_match_store.dart';
 
 const ada = AccountUser(uid: 'a', displayName: 'Ada');
 
@@ -92,5 +95,34 @@ void main() {
 
     expect((await service.load('a')).friends, isEmpty);
     expect(find.text('Bob'), findsNothing);
+  });
+
+  testWidgets('a friend can be challenged', (tester) async {
+    final store = InMemoryFriendStore();
+    final (service, bob) = await setUpOther(store);
+    final me = await service.myProfile('a', 'Ada');
+    await service.sendRequest(bob, me.code);
+    await service.accept(me, bob);
+    final matches = InMemoryOnlineMatchStore();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FriendsScreen(
+          user: ada,
+          service: service,
+          onlineService: OnlineMatchService(matches),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Challenge'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Standard'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Challenge sent to Bob.'), findsOneWidget);
+    final sent = matches.matches.values.single;
+    expect(sent.players, ['a', 'b']);
+    expect(sent.mode, GameMode.standard);
   });
 }

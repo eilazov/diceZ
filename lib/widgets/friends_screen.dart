@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../models/friend_profile.dart';
+import '../models/game_mode.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_friend_store.dart';
+import '../services/firestore_online_match_store.dart';
 import '../services/friend_service.dart';
+import '../services/online_match_service.dart';
 import 'friend_code_tile.dart';
 
 String accountDisplayName(AccountUser user) {
@@ -15,12 +18,20 @@ String accountDisplayName(AccountUser user) {
 /// Your friend code, search-by-code to send a request, and your friends and
 /// pending requests.
 class FriendsScreen extends StatefulWidget {
-  const FriendsScreen({super.key, required this.user, this.service});
+  const FriendsScreen({
+    super.key,
+    required this.user,
+    this.service,
+    this.onlineService,
+  });
 
   final AccountUser user;
 
   /// Defaults to a Firestore-backed [FriendService]; injectable for tests.
   final FriendService? service;
+
+  /// Defaults to a Firestore-backed service; injectable for tests.
+  final OnlineMatchService? onlineService;
 
   @override
   State<FriendsScreen> createState() => _FriendsScreenState();
@@ -29,6 +40,8 @@ class FriendsScreen extends StatefulWidget {
 class _FriendsScreenState extends State<FriendsScreen> {
   late final FriendService _service =
       widget.service ?? FriendService(FirestoreFriendStore());
+  late final OnlineMatchService _online =
+      widget.onlineService ?? OnlineMatchService(FirestoreOnlineMatchStore());
   final _controller = TextEditingController();
   FriendProfile? _me;
   FriendsOverview? _overview;
@@ -82,6 +95,33 @@ class _FriendsScreenState extends State<FriendsScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _challenge(FriendProfile friend) async {
+    final me = _me;
+    if (me == null) return;
+    final mode = await showDialog<GameMode>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text('Challenge ${friend.name}'),
+        children: [
+          for (final m in GameMode.values)
+            SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(m),
+              child: Text('${m.label} (${m.rounds} rounds)'),
+            ),
+        ],
+      ),
+    );
+    if (mode == null) return;
+    await _run(() async {
+      await _online.challenge(me, friend, mode);
+      if (!mounted) return;
+      setState(() {
+        _messageIsError = false;
+        _message = 'Challenge sent to ${friend.name}.';
+      });
+    });
   }
 
   Future<void> _send() async {
@@ -245,12 +285,23 @@ class _FriendsScreenState extends State<FriendsScreen> {
             leading: const Icon(Icons.person),
             title: Text(p.name),
             subtitle: Text(p.code),
-            trailing: IconButton(
-              tooltip: 'Remove friend',
-              icon: const Icon(Icons.person_remove),
-              onPressed: _busy
-                  ? null
-                  : () => _run(() => _service.remove(widget.user.uid, p.uid)),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Challenge',
+                  icon: const Icon(Icons.casino),
+                  onPressed: _busy ? null : () => _challenge(p),
+                ),
+                IconButton(
+                  tooltip: 'Remove friend',
+                  icon: const Icon(Icons.person_remove),
+                  onPressed: _busy
+                      ? null
+                      : () =>
+                            _run(() => _service.remove(widget.user.uid, p.uid)),
+                ),
+              ],
             ),
           ),
       ],
