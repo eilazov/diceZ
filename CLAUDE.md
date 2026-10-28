@@ -69,6 +69,17 @@ friends. Logic lives in `FriendService` over the `FriendStore` interface
 tests). Firestore layout and security rules: `firestore.rules` (must be
 deployed/merged by hand).
 
+## Online games
+
+Two friends play one match from two phones, asynchronously. `liveMatches/{id}`
+holds a `DiceGame` JSON snapshot (`DiceGame.toJson/fromJson`); `OnlineMatchService`
+(over `OnlineMatchStore`) enforces who may accept / save a turn. Challenge from
+`FriendsScreen`; invites and active matches in `OnlineMatchesScreen`; play in
+`OnlineGameScreen` (shares `TurnHeader`/`ControlDeck` with `GameScreen`). The
+active player's device rolls — no anti-cheat, no push. Design:
+`docs/superpowers/specs/2026-10-28-online-friend-games-design.md`. Rules in
+`firestore.rules` must be republished by hand.
+
 ## State management & navigation
 
 Plain `StatefulWidget` + `setState`. `GameScreen` holds one `DiceGame` and rebuilds
