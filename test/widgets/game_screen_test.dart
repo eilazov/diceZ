@@ -8,8 +8,11 @@ import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/models/player_profile.dart';
 import 'package:dice_zee/models/score_card.dart';
 import 'package:dice_zee/services/game_storage.dart';
+import 'package:dice_zee/widgets/dice_zee_celebration.dart';
 import 'package:dice_zee/widgets/game_screen.dart';
 import 'package:dice_zee/widgets/results_screen.dart';
+
+import '../support/constant_random.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -247,5 +250,64 @@ void main() {
 
     final history = await const GameStorage().loadHistory();
     expect(history.single.mode, GameMode.extended);
+  });
+
+  group('Dice Zee celebration', () {
+    Widget rigged(Random random) => MaterialApp(
+      home: GameScreen(
+        lineup: List<PlayerProfile?>.filled(2, null),
+        storage: const GameStorage(),
+        random: random,
+      ),
+    );
+
+    testWidgets('plays when a roll lands five of a kind', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 2600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(rigged(ConstantRandom(6)));
+
+      await tester.tap(rollButton);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(DiceZeeCelebration), findsOneWidget);
+
+      await tester.pump(
+        DiceZeeCelebration.duration + const Duration(seconds: 1),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(DiceZeeCelebration), findsNothing);
+    });
+
+    testWidgets('plays again on every further Dice Zee roll', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 2600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(rigged(ConstantRandom(6)));
+
+      // Roll 2 lands while roll 1's show is still playing; roll 3 lands after
+      // everything has finished.
+      await tester.tap(rollButton);
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(rollButton);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(DiceZeeCelebration), findsOneWidget);
+
+      await tester.pump(
+        DiceZeeCelebration.duration + const Duration(seconds: 1),
+      );
+      expect(find.byType(DiceZeeCelebration), findsNothing);
+
+      await tester.tap(rollButton);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(DiceZeeCelebration), findsOneWidget);
+    });
+
+    testWidgets('stays away on an ordinary roll', (tester) async {
+      await tester.binding.setSurfaceSize(const Size(900, 2600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(rigged(Random(1)));
+
+      await tester.tap(rollButton);
+      await tester.pumpAndSettle();
+      expect(find.byType(DiceZeeCelebration), findsNothing);
+    });
   });
 }

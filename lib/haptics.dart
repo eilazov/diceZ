@@ -13,6 +13,9 @@ abstract final class AppHaptics {
   /// A category is committed.
   static void commit() => HapticFeedback.lightImpact();
 
+  /// A roll lands five of a kind.
+  static void diceZee() => HapticFeedback.heavyImpact();
+
   /// The match is over.
   static void gameOver() => HapticFeedback.heavyImpact();
 }

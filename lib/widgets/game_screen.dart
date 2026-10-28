@@ -12,6 +12,7 @@ import '../models/score_card.dart';
 import '../seat_palette.dart';
 import '../services/game_storage.dart';
 import '../services/sync_service.dart';
+import 'dice_zee_celebration.dart';
 import 'game_controls.dart';
 import 'results_screen.dart';
 import 'score_table.dart';
@@ -56,6 +57,7 @@ class _GameScreenState extends State<GameScreen> {
   int _rollCount = 0;
   bool _summaryShown = false;
   bool _awaitingHandoff = false;
+  bool _celebrating = false;
 
   String _nameFor(int seat) =>
       widget.lineup[seat]?.name ?? SeatPalette.label(seat);
@@ -69,7 +71,9 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _game.roll();
       _rollCount++;
+      _celebrating = _game.isDiceZee;
     });
+    if (_celebrating) AppHaptics.diceZee();
   }
 
   void _toggleHold(int index) {
@@ -82,6 +86,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _game.commitScore(category);
       _rollCount++;
+      _celebrating = false;
     });
 
     if (_game.isOver) {
@@ -209,6 +214,20 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ],
           ),
+          if (_celebrating)
+            DiceZeeCelebration(
+              // A fresh roll that is also a Dice Zee restarts the show.
+              key: ValueKey(_rollCount),
+              face: _game.dice.first,
+              accent: seatColor,
+              name: _nameFor(seat),
+              points: ScoreCard.score(
+                ScoreCategory.yahtzee,
+                _game.dice,
+                mode: widget.mode,
+              ),
+              onDone: () => setState(() => _celebrating = false),
+            ),
           if (_awaitingHandoff)
             _HandoffCover(
               name: _nameFor(seat),
