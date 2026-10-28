@@ -14,6 +14,7 @@ void playTurn(DiceGame game, ScoreCategory category) {
 }
 
 void main() {
+  serializationTests();
   group('construction', () {
     test('accepts 2 to 4 players', () {
       expect(DiceGame(playerCount: 2).playerCount, 2);
@@ -217,6 +218,63 @@ void main() {
 
     test('extended mode still lasts 15 rounds', () {
       expect(DiceGame(playerCount: 2).roundCount, 15);
+    });
+  });
+}
+
+void serializationTests() {
+  group('serialization', () {
+    test('round-trips mid-turn state', () {
+      final game = DiceGame(
+        playerCount: 2,
+        mode: GameMode.standard,
+        random: Random(4),
+      );
+      playTurn(game, ScoreCategory.chance);
+      game.roll();
+      game.toggleHold(1);
+
+      final copy = DiceGame.fromJson(game.toJson());
+
+      expect(copy.mode, GameMode.standard);
+      expect(copy.playerCount, 2);
+      expect(copy.round, game.round);
+      expect(copy.currentPlayer, game.currentPlayer);
+      expect(copy.rollsRemaining, game.rollsRemaining);
+      expect(copy.hasRolledThisRound, isTrue);
+      expect(copy.dice, game.dice);
+      expect(copy.held, game.held);
+      expect(copy.standings, game.standings);
+      expect(copy.scoreCardFor(0).isFilled(ScoreCategory.chance), isTrue);
+    });
+
+    test('a restored game keeps playing', () {
+      final game = DiceGame(playerCount: 2, random: Random(4))..roll();
+      final copy = DiceGame.fromJson(game.toJson(), random: Random(9))..roll();
+      expect(copy.rollsRemaining, 1);
+      copy.commitScore(ScoreCategory.chance);
+      expect(copy.currentPlayer, 1);
+    });
+
+    test('keeps the upper bonus', () {
+      final game = DiceGame(
+        playerCount: 2,
+        mode: GameMode.standard,
+        random: Random(1),
+      );
+      final card = game.scoreCardFor(0);
+      for (final c in [
+        ScoreCategory.ones,
+        ScoreCategory.twos,
+        ScoreCategory.threes,
+        ScoreCategory.fours,
+        ScoreCategory.fives,
+        ScoreCategory.sixes,
+      ]) {
+        card.commit(c, [1, 2, 3, 4, 5]);
+      }
+      final copy = DiceGame.fromJson(game.toJson());
+      expect(copy.scoreCardFor(0).total, card.total);
     });
   });
 }

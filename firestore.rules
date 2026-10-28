@@ -19,6 +19,16 @@ service cloud.firestore {
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
     }
 
+    // Online matches: only the two players can see or change one, and a match
+    // can only be created by its challenger (seat 0) against a second player.
+    match /liveMatches/{id} {
+      allow read, update, delete: if signedIn() &&
+        request.auth.uid in resource.data.players;
+      allow create: if signedIn() &&
+        request.resource.data.players.size() == 2 &&
+        request.resource.data.players[0] == request.auth.uid;
+    }
+
     match /users/{uid} {
       // The person being added writes into the requester's friends list, but
       // only while the requester has a pending request to them.

@@ -22,6 +22,47 @@ class DiceGame {
        _random = random ?? Random(),
        _cards = List.generate(playerCount, (_) => ScoreCard(mode: mode));
 
+  /// Restore a match from [toJson] output.
+  factory DiceGame.fromJson(Map<String, dynamic> json, {Random? random}) {
+    final mode = GameMode.fromName(json['mode'] as String?);
+    final game = DiceGame(
+      playerCount: (json['playerCount'] as num).toInt(),
+      mode: mode,
+      random: random,
+    );
+    final cards = json['cards'] as List<dynamic>;
+    for (var p = 0; p < game.playerCount; p++) {
+      game._cards[p] = ScoreCard.fromJson(
+        Map<String, dynamic>.from(cards[p] as Map),
+        mode: mode,
+      );
+    }
+    game._round = (json['round'] as num).toInt();
+    game._currentPlayer = (json['currentPlayer'] as num).toInt();
+    game._rollsRemaining = (json['rollsRemaining'] as num).toInt();
+    game._hasRolled = json['hasRolled'] as bool;
+    final dice = json['dice'] as List<dynamic>;
+    final held = json['held'] as List<dynamic>;
+    for (var i = 0; i < _diceCount; i++) {
+      game._dice[i] = (dice[i] as num).toInt();
+      game._held[i] = held[i] as bool;
+    }
+    return game;
+  }
+
+  /// The full match state, enough to resume it on another device.
+  Map<String, dynamic> toJson() => {
+    'playerCount': playerCount,
+    'mode': mode.name,
+    'round': _round,
+    'currentPlayer': _currentPlayer,
+    'rollsRemaining': _rollsRemaining,
+    'hasRolled': _hasRolled,
+    'dice': List<int>.of(_dice),
+    'held': List<bool>.of(_held),
+    'cards': [for (final c in _cards) c.toJson()],
+  };
+
   final int playerCount;
   final GameMode mode;
 

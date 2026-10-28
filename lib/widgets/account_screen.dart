@@ -9,6 +9,7 @@ import '../services/friend_service.dart';
 import '../services/player_storage.dart';
 import 'friend_code_tile.dart';
 import 'friends_screen.dart';
+import 'online_matches_screen.dart';
 
 /// Sign in with Google / Apple, or carry on as a guest. Signed in, shows the
 /// account and a sign-out button.
@@ -219,6 +220,15 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
           icon: const Icon(Icons.group),
           label: const Text('Friends'),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => OnlineMatchesScreen(user: user)),
+          ),
+          icon: const Icon(Icons.casino),
+          label: const Text('Online games'),
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
         ),
         const SizedBox(height: 12),
