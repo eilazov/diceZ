@@ -202,7 +202,7 @@ class _StatsBody extends StatelessWidget {
         ('stat_best_streak', '${stats.longestWinStreak}', 'Longest win streak'),
       ('stat_margin', '${stats.biggestMargin}', 'Biggest winning margin'),
       ('stat_yahtzee', '${stats.yahtzeeCount}', 'Dice Zees'),
-      if (stats.bonusCount > 0 || mode == GameMode.standard)
+      if (stats.bonusCount > 0 || mode.hasUpperBonus)
         ('stat_bonus', '${stats.bonusCount}', 'Upper bonuses'),
       (
         'stat_recent',

@@ -143,10 +143,22 @@ class _RulesSummary extends StatelessWidget {
     'No upper bonus, no jokers',
   ];
 
+  static const _combined = [
+    '15 rounds: Standard rules plus one pair and two pairs',
+    'Bonus +35 for 63 or more in ones–sixes',
+    'Full house 25 · small straight 30 · large straight 40 · Dice Zee 50',
+    'Once the Dice Zee box is filled, another Dice Zee scores 50 in any '
+        'open box',
+  ];
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final lines = mode == GameMode.standard ? _standard : _extended;
+    final lines = switch (mode) {
+      GameMode.standard => _standard,
+      GameMode.extended => _extended,
+      GameMode.combined => _combined,
+    };
     return Container(
       key: ValueKey('rules_${mode.name}'),
       padding: const EdgeInsets.all(14),

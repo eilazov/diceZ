@@ -7,7 +7,11 @@ enum GameMode {
   standard,
 
   /// The original 15-category sheet (pairs, big Dice Zee, no bonus).
-  extended;
+  extended,
+
+  /// Standard rules (bonus, jokers, standard values) plus one pair and two
+  /// pairs: 15 categories.
+  combined;
 
   /// Upper-section total needed for the bonus (standard mode).
   static const int upperBonusThreshold = 63;
@@ -15,7 +19,7 @@ enum GameMode {
 
   /// The categories on this mode's sheet, in sheet order.
   List<ScoreCategory> get categories => switch (this) {
-    GameMode.extended => ScoreCategory.values,
+    GameMode.extended || GameMode.combined => ScoreCategory.values,
     GameMode.standard => [
       for (final c in ScoreCategory.values)
         if (c != ScoreCategory.onePair && c != ScoreCategory.twoPairs) c,
@@ -25,11 +29,16 @@ enum GameMode {
   /// Rounds per match: one per category.
   int get rounds => categories.length;
 
-  bool get hasUpperBonus => this == GameMode.standard;
+  /// Standard and combined share the classic rules: upper bonus, jokers and
+  /// the 25/30/40/50 values.
+  bool get usesStandardRules => this != GameMode.extended;
+
+  bool get hasUpperBonus => usesStandardRules;
 
   String get label => switch (this) {
     GameMode.standard => 'Standard',
     GameMode.extended => 'Extended',
+    GameMode.combined => 'Combined',
   };
 
   /// Resolve a stored [name]; anything unknown (or absent, for matches saved
