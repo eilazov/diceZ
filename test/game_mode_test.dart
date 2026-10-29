@@ -19,6 +19,15 @@ void main() {
     expect(GameMode.standard.hasUpperBonus, isTrue);
   });
 
+  test('combined is standard rules on the full 15-category sheet', () {
+    expect(GameMode.combined.categories, ScoreCategory.values);
+    expect(GameMode.combined.rounds, 15);
+    expect(GameMode.combined.hasUpperBonus, isTrue);
+    expect(GameMode.combined.usesStandardRules, isTrue);
+    expect(GameMode.extended.usesStandardRules, isFalse);
+    expect(GameMode.combined.label, 'Combined');
+  });
+
   test('categories stay in sheet order', () {
     for (final mode in GameMode.values) {
       final indexes = [for (final c in mode.categories) c.index];
@@ -29,6 +38,7 @@ void main() {
   test('fromName resolves names and defaults to extended', () {
     expect(GameMode.fromName('standard'), GameMode.standard);
     expect(GameMode.fromName('extended'), GameMode.extended);
+    expect(GameMode.fromName('combined'), GameMode.combined);
     expect(GameMode.fromName(null), GameMode.extended);
     expect(GameMode.fromName('nonsense'), GameMode.extended);
   });

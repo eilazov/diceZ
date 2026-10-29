@@ -313,4 +313,34 @@ void main() {
       expect(c.potentialScore(ScoreCategory.chance, [4, 4, 4, 4, 4]), 20);
     });
   });
+
+  group('combined mode', () {
+    test('uses standard values and scores pairs', () {
+      int score(ScoreCategory c, List<int> d) =>
+          ScoreCard.score(c, d, mode: GameMode.combined);
+      expect(score(ScoreCategory.yahtzee, [3, 3, 3, 3, 3]), 50);
+      expect(score(ScoreCategory.fullHouse, [2, 2, 3, 3, 3]), 25);
+      expect(score(ScoreCategory.smallStraight, [1, 2, 3, 4, 6]), 30);
+      expect(score(ScoreCategory.largeStraight, [1, 2, 3, 4, 5]), 40);
+      expect(score(ScoreCategory.onePair, [2, 2, 5, 5, 6]), 10);
+      expect(score(ScoreCategory.twoPairs, [2, 2, 5, 5, 6]), 14);
+    });
+
+    test('has the upper bonus and the Dice Zee joker', () {
+      final card = ScoreCard(mode: GameMode.combined);
+      card.commit(ScoreCategory.yahtzee, [1, 2, 3, 4, 6]);
+      expect(card.potentialScore(ScoreCategory.onePair, [4, 4, 4, 4, 4]), 50);
+      for (final c in [
+        ScoreCategory.ones,
+        ScoreCategory.twos,
+        ScoreCategory.threes,
+        ScoreCategory.fours,
+        ScoreCategory.fives,
+        ScoreCategory.sixes,
+      ]) {
+        card.commit(c, [6, 6, 6, 6, 6]);
+      }
+      expect(card.upperBonus, 35);
+    });
+  });
 }

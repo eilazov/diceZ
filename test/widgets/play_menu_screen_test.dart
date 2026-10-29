@@ -101,6 +101,7 @@ void main() {
     expect(selector.selected, {GameMode.standard});
     expect(find.text('Standard'), findsOneWidget);
     expect(find.text('Extended'), findsOneWidget);
+    expect(find.text('Combined'), findsOneWidget);
     expect(find.byKey(const ValueKey('rules_standard')), findsOneWidget);
   });
 
@@ -114,6 +115,17 @@ void main() {
 
     expect(find.byKey(const ValueKey('rules_extended')), findsOneWidget);
     expect(find.byKey(const ValueKey('rules_standard')), findsNothing);
+  });
+
+  testWidgets('combined shows its own rules summary', (tester) async {
+    _tall(tester);
+    await tester.pumpWidget(const MaterialApp(home: PlayMenuScreen()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Combined'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('rules_combined')), findsOneWidget);
   });
 
   testWidgets('the chosen mode reaches the game', (tester) async {

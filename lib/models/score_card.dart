@@ -63,10 +63,10 @@ class ScoreCard {
   bool get isComplete => mode.categories.every(isFilled);
 
   /// What [dice] would score in [category] on this card right now. In
-  /// standard mode a Dice Zee rolled after the Dice Zee box is filled (even
+  /// standard and combined mode a Dice Zee rolled after the Dice Zee box is filled (even
   /// with 0) is worth 50 in any open category.
   int potentialScore(ScoreCategory category, List<int> dice) {
-    if (mode == GameMode.standard &&
+    if (mode.usesStandardRules &&
         isFilled(ScoreCategory.yahtzee) &&
         _facesWithAtLeast(dice, 5).isNotEmpty) {
       return 50;
@@ -93,7 +93,7 @@ class ScoreCard {
     List<int> dice, {
     GameMode mode = GameMode.extended,
   }) {
-    final standard = mode == GameMode.standard;
+    final standard = mode.usesStandardRules;
     switch (category) {
       case ScoreCategory.ones:
         return _faceTotal(dice, 1);
