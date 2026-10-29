@@ -9,8 +9,10 @@ import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/services/auth_service.dart';
 import 'package:dice_zee/services/game_storage.dart';
 import 'package:dice_zee/services/online_match_service.dart';
+import 'package:dice_zee/widgets/dice_zee_celebration.dart';
 import 'package:dice_zee/widgets/online_game_screen.dart';
 
+import '../support/constant_random.dart';
 import '../support/in_memory_online_match_store.dart';
 
 const ada = FriendProfile(uid: 'a', name: 'Ada', code: 'AAAAAA');
@@ -32,18 +34,28 @@ void main() {
     id = m.id;
   });
 
-  Future<void> pump(WidgetTester tester, AccountUser user) async {
+  Future<void> pump(
+    WidgetTester tester,
+    AccountUser user, {
+    Random? random,
+  }) async {
     await tester.pumpWidget(
       MaterialApp(
         home: OnlineGameScreen(
           user: user,
           matchId: id,
           service: service,
-          random: Random(1),
+          random: random ?? Random(1),
         ),
       ),
     );
     await tester.pumpAndSettle();
+  }
+
+  /// Ada rolls [random]'s dice from outside the widget, as her device would.
+  Future<void> adaRolls(Random random) async {
+    final m = (await store.get(id))!;
+    await service.saveTurn(m, 'a', m.game(random: random)..roll());
   }
 
   testWidgets('on your turn, Roll writes the new state', (tester) async {
@@ -80,6 +92,75 @@ void main() {
 
     expect(find.byKey(const ValueKey('roll_button')), findsOneWidget);
     expect((await store.get(id))!.game().rollsRemaining, 2);
+  });
+
+  group('Dice Zee celebration', () {
+    final celebration = find.byType(DiceZeeCelebration);
+
+    testWidgets('the roller sees it on their own roll', (tester) async {
+      await pump(tester, adaUser, random: ConstantRandom(3));
+
+      await tester.tap(find.byKey(const ValueKey('roll_button')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(celebration, findsOneWidget);
+      expect(find.text('YOU ROLLED'), findsOneWidget);
+    });
+
+    testWidgets("the opponent sees it when it lands in the match", (
+      tester,
+    ) async {
+      await pump(tester, bobUser);
+      expect(celebration, findsNothing);
+
+      await adaRolls(ConstantRandom(3));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(celebration, findsOneWidget);
+      expect(find.text('ADA ROLLED'), findsOneWidget);
+    });
+
+    testWidgets('does not replay when the same roll is delivered again', (
+      tester,
+    ) async {
+      await pump(tester, bobUser);
+      await adaRolls(ConstantRandom(3));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(celebration, findsOneWidget);
+      await tester.pump(
+        DiceZeeCelebration.duration + const Duration(seconds: 1),
+      );
+      await tester.pump();
+      expect(celebration, findsNothing);
+
+      // A re-delivery of the unchanged state (e.g. the server echoing a write).
+      await store.update((await store.get(id))!);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(celebration, findsNothing);
+    });
+
+    testWidgets('stays away on an ordinary roll', (tester) async {
+      await pump(tester, bobUser);
+      await adaRolls(Random(1));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(celebration, findsNothing);
+    });
+
+    testWidgets('does not fire for a Dice Zee already on the table at open', (
+      tester,
+    ) async {
+      await adaRolls(ConstantRandom(3));
+      await pump(tester, bobUser);
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(celebration, findsNothing);
+    });
   });
 
   testWidgets('a finished match is saved to local history once', (

@@ -13,6 +13,7 @@ import '../services/firestore_online_match_store.dart';
 import '../services/game_storage.dart';
 import '../services/online_match_service.dart';
 import '../services/player_storage.dart';
+import 'dice_zee_celebration.dart';
 import 'game_controls.dart';
 import 'results_screen.dart';
 import 'score_table.dart';
@@ -49,6 +50,46 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
   late final Stream<OnlineMatch?> _stream = _service.watch(widget.matchId);
   bool _finishHandled = false;
   bool _busy = false;
+
+  /// Identifies the roll the board last showed, so a snapshot is celebrated
+  /// once however often it is delivered. Null until the first snapshot, which
+  /// is only a baseline: a Dice Zee already on the table at open is stale.
+  String? _seenRoll;
+  _Show? _show;
+
+  /// Notes the roll in [match] and starts the Dice Zee show if it is a new one.
+  /// Runs for both players, since both receive every snapshot.
+  void _noteRoll(OnlineMatch match) {
+    final game = match.game();
+    final roll =
+        '${game.round}/${game.currentPlayer}/${game.rollsRemaining}/'
+        '${game.hasRolledThisRound}';
+    if (roll == _seenRoll) return;
+    final first = _seenRoll == null;
+    _seenRoll = roll;
+    if (first) return;
+
+    if (game.isDiceZee) {
+      AppHaptics.diceZee();
+      setState(
+        () => _show = _Show(
+          roll: roll,
+          face: game.dice.first,
+          seat: game.currentPlayer,
+          name: match.isMyTurn(widget.user.uid)
+              ? 'You'
+              : match.names[game.currentPlayer],
+          points: ScoreCard.score(
+            ScoreCategory.yahtzee,
+            game.dice,
+            mode: match.mode,
+          ),
+        ),
+      );
+    } else if (_show != null) {
+      setState(() => _show = null);
+    }
+  }
 
   Future<void> _act(
     OnlineMatch match,
@@ -125,6 +166,9 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
             (_) => unawaited(_handleFinished(match)),
           );
         }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _noteRoll(match);
+        });
         return _board(context, match);
       },
     );
@@ -160,50 +204,83 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
+        fit: StackFit.expand,
         children: [
-          TurnHeader(
-            name: mine ? 'Your turn' : "${match.names[seat]}'s turn",
-            color: color,
-            rollsRemaining: game.rollsRemaining,
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-              child: ScoreTable(
-                cards: game.scoreCards,
-                currentPlayer: seat,
-                currentDice: game.dice,
-                canCommit: canAct && !_busy,
-                onCommit: (ScoreCategory c) {
-                  AppHaptics.commit();
-                  _act(match, (g) => g.commitScore(c));
-                },
-                names: match.names,
+          Column(
+            children: [
+              TurnHeader(
+                name: mine ? 'Your turn' : "${match.names[seat]}'s turn",
+                color: color,
+                rollsRemaining: game.rollsRemaining,
               ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                  child: ScoreTable(
+                    cards: game.scoreCards,
+                    currentPlayer: seat,
+                    currentDice: game.dice,
+                    canCommit: canAct && !_busy,
+                    onCommit: (ScoreCategory c) {
+                      AppHaptics.commit();
+                      _act(match, (g) => g.commitScore(c));
+                    },
+                    names: match.names,
+                  ),
+                ),
+              ),
+              ControlDeck(
+                dice: game.dice,
+                held: game.held,
+                canHold: canAct && !_busy,
+                placeholder: !game.hasRolledThisRound,
+                rollCount:
+                    game.round * 100 + seat * 10 + (3 - game.rollsRemaining),
+                seatColor: color,
+                rollsRemaining: game.rollsRemaining,
+                canRoll: canRoll,
+                awaitingCommit: mine && !canRoll && canAct,
+                onRoll: () {
+                  AppHaptics.roll();
+                  _act(match, (g) => g.roll());
+                },
+                onToggleHold: (i) {
+                  AppHaptics.hold();
+                  _act(match, (g) => g.toggleHold(i));
+                },
+              ),
+            ],
+          ),
+          if (_show case final show?)
+            DiceZeeCelebration(
+              key: ValueKey(show.roll),
+              face: show.face,
+              accent: SeatPalette.color(show.seat),
+              name: show.name,
+              points: show.points,
+              onDone: () => setState(() => _show = null),
             ),
-          ),
-          ControlDeck(
-            dice: game.dice,
-            held: game.held,
-            canHold: canAct && !_busy,
-            placeholder: !game.hasRolledThisRound,
-            rollCount: game.round * 100 + seat * 10 + (3 - game.rollsRemaining),
-            seatColor: color,
-            rollsRemaining: game.rollsRemaining,
-            canRoll: canRoll,
-            awaitingCommit: mine && !canRoll && canAct,
-            onRoll: () {
-              AppHaptics.roll();
-              _act(match, (g) => g.roll());
-            },
-            onToggleHold: (i) {
-              AppHaptics.hold();
-              _act(match, (g) => g.toggleHold(i));
-            },
-          ),
         ],
       ),
     );
   }
+}
+
+/// What the Dice Zee show needs, captured when the roll arrives because the
+/// match moves on (and the dice reset) before the show ends.
+class _Show {
+  const _Show({
+    required this.roll,
+    required this.face,
+    required this.seat,
+    required this.name,
+    required this.points,
+  });
+
+  final String roll;
+  final int face;
+  final int seat;
+  final String name;
+  final int points;
 }
