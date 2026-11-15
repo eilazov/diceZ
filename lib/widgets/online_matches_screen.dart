@@ -1,20 +1,34 @@
 import 'package:flutter/material.dart';
 
 import '../models/dice_game.dart';
+import '../models/friend_profile.dart';
 import '../models/online_match.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_friend_store.dart';
 import '../services/firestore_online_match_store.dart';
+import '../services/friend_service.dart';
 import '../services/online_match_service.dart';
+import 'challenge_mode_dialog.dart';
+import 'friends_screen.dart';
 import 'online_game_screen.dart';
 
-/// Invites, your turn / their turn matches and recent finished ones.
+/// The online hub: invites, your turn / their turn matches and recent
+/// finished ones, plus starting a new game and managing friends.
 class OnlineMatchesScreen extends StatefulWidget {
-  const OnlineMatchesScreen({super.key, required this.user, this.service});
+  const OnlineMatchesScreen({
+    super.key,
+    required this.user,
+    this.service,
+    this.friendService,
+  });
 
   final AccountUser user;
 
   /// Defaults to a Firestore-backed service; injectable for tests.
   final OnlineMatchService? service;
+
+  /// Defaults to a Firestore-backed [FriendService]; injectable for tests.
+  final FriendService? friendService;
 
   @override
   State<OnlineMatchesScreen> createState() => _OnlineMatchesScreenState();
@@ -23,6 +37,8 @@ class OnlineMatchesScreen extends StatefulWidget {
 class _OnlineMatchesScreenState extends State<OnlineMatchesScreen> {
   late final OnlineMatchService _service =
       widget.service ?? OnlineMatchService(FirestoreOnlineMatchStore());
+  late final FriendService _friends =
+      widget.friendService ?? FriendService(FirestoreFriendStore());
   late final Stream<List<OnlineMatch>> _stream = _service.watchFor(
     widget.user.uid,
   );
@@ -52,11 +68,85 @@ class _OnlineMatchesScreenState extends State<OnlineMatchesScreen> {
     ),
   );
 
+  void _openFriends() => Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => FriendsScreen(
+        user: widget.user,
+        service: widget.friendService,
+        onlineService: widget.service,
+      ),
+    ),
+  );
+
+  Future<void> _newGame() => _guard(() async {
+    final uid = widget.user.uid;
+    final me = await _friends.myProfile(uid, accountDisplayName(widget.user));
+    final friends = (await _friends.load(uid)).friends;
+    if (!mounted) return;
+    final friend = await showModalBottomSheet<FriendProfile>(
+      context: context,
+      builder: (sheet) => SafeArea(
+        child: friends.isEmpty
+            ? Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Add a friend first'),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () {
+                        Navigator.of(sheet).pop();
+                        _openFriends();
+                      },
+                      child: const Text('Open Friends'),
+                    ),
+                  ],
+                ),
+              )
+            : ListView(
+                shrinkWrap: true,
+                children: [
+                  for (final f in friends)
+                    ListTile(
+                      title: Text(f.name),
+                      onTap: () => Navigator.of(sheet).pop(f),
+                    ),
+                ],
+              ),
+      ),
+    );
+    if (friend == null || !mounted) return;
+    final mode = await showChallengeModeDialog(context, friend.name);
+    if (mode == null) return;
+    await _service.challenge(me, friend, mode);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Challenge sent to ${friend.name}.')),
+    );
+  });
+
   @override
   Widget build(BuildContext context) {
     final uid = widget.user.uid;
     return Scaffold(
-      appBar: AppBar(title: const Text('Online games')),
+      appBar: AppBar(
+        title: const Text('Online games'),
+        actions: [
+          IconButton(
+            key: const ValueKey('friends_action'),
+            tooltip: 'Friends',
+            icon: const Icon(Icons.group),
+            onPressed: _openFriends,
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const ValueKey('new_game_button'),
+        onPressed: _newGame,
+        icon: const Icon(Icons.add),
+        label: const Text('New game'),
+      ),
       body: SafeArea(
         child: StreamBuilder<List<OnlineMatch>>(
           stream: _stream,
@@ -99,14 +189,14 @@ class _OnlineMatchesScreenState extends State<OnlineMatchesScreen> {
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: Text(
-                    'No online games yet. Challenge a friend from the Friends page.',
+                    'No online games yet. Tap New game to challenge a friend.',
                     textAlign: TextAlign.center,
                   ),
                 ),
               );
             }
             return ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
               children: [
                 if (invites.isNotEmpty) _header('Invites'),
                 for (final m in invites)

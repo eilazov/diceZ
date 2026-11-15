@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../models/friend_profile.dart';
-import '../models/game_mode.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_friend_store.dart';
 import '../services/firestore_online_match_store.dart';
 import '../services/friend_service.dart';
 import '../services/online_match_service.dart';
+import 'challenge_mode_dialog.dart';
 import 'friend_code_tile.dart';
 
 String accountDisplayName(AccountUser user) {
@@ -100,19 +100,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Future<void> _challenge(FriendProfile friend) async {
     final me = _me;
     if (me == null) return;
-    final mode = await showDialog<GameMode>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text('Challenge ${friend.name}'),
-        children: [
-          for (final m in GameMode.values)
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(context).pop(m),
-              child: Text('${m.label} (${m.rounds} rounds)'),
-            ),
-        ],
-      ),
-    );
+    final mode = await showChallengeModeDialog(context, friend.name);
     if (mode == null) return;
     await _run(() async {
       await _online.challenge(me, friend, mode);
