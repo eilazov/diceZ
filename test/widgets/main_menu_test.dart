@@ -9,6 +9,7 @@ import 'package:dice_zee/services/auth_service.dart';
 import 'package:dice_zee/services/game_storage.dart';
 import 'package:dice_zee/widgets/account_screen.dart';
 import 'package:dice_zee/widgets/main_menu.dart';
+import 'package:dice_zee/widgets/online_hub_screen.dart';
 import 'package:dice_zee/widgets/play_menu_screen.dart';
 import 'package:dice_zee/widgets/statistics_screen.dart';
 
@@ -48,6 +49,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(StatisticsScreen), findsOneWidget);
+  });
+
+  testWidgets('Online opens the online hub', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MainMenuScreen(authServiceBuilder: () => _SignedOutAuth()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('online_button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OnlineHubScreen), findsOneWidget);
   });
 
   testWidgets('there is no Players entry any more', (tester) async {

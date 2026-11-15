@@ -9,12 +9,13 @@ import '../services/game_storage.dart';
 import '../services/player_storage.dart';
 import '../services/sync_service.dart';
 import 'account_screen.dart';
+import 'online_hub_screen.dart';
 import 'pip_face.dart';
 import 'play_menu_screen.dart';
 import 'statistics_screen.dart';
 import 'version_indicator.dart';
 
-/// App home: play, view statistics, or open the account.
+/// App home: play, go online, view statistics, or open the account.
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({
     super.key,
@@ -57,6 +58,15 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PlayMenuScreen(playerStorage: widget.playerStorage),
+      ),
+    );
+  }
+
+  void _openOnline() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            OnlineHubScreen(authService: widget.authServiceBuilder?.call()),
       ),
     );
   }
@@ -116,6 +126,16 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       minimumSize: const Size.fromHeight(52),
                     ),
                     child: const Text('Play'),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.tonalIcon(
+                    key: const ValueKey('online_button'),
+                    onPressed: _openOnline,
+                    icon: const Icon(Icons.casino),
+                    label: const Text('Online'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
