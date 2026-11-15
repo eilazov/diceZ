@@ -228,6 +228,18 @@ class _AccountScreenState extends State<AccountScreen> {
           },
         ),
         const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  FriendsScreen(user: user, service: widget.friendService),
+            ),
+          ),
+          icon: const Icon(Icons.group),
+          label: const Text('Friends'),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+        ),
+        const SizedBox(height: 12),
         OutlinedButton(
           onPressed: _busy ? null : () => _run(_auth.signOut),
           child: const Text('Sign out'),

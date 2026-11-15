@@ -11,6 +11,7 @@ import 'package:dice_zee/services/auth_service.dart';
 import 'package:dice_zee/services/friend_service.dart';
 import 'package:dice_zee/services/player_storage.dart';
 import 'package:dice_zee/widgets/account_screen.dart';
+import 'package:dice_zee/widgets/friends_screen.dart';
 
 import '../support/in_memory_friend_store.dart';
 
@@ -210,7 +211,7 @@ void main() {
   });
 
   testWidgets(
-    'signed in: shows friend code, Friends and Online live elsewhere',
+    'signed in: shows friend code, opens Friends, has no Online button',
     (tester) async {
       final service = FriendService(InMemoryFriendStore(), random: Random(2));
       final auth = FakeAuthService(
@@ -225,9 +226,13 @@ void main() {
 
       final me = await service.myProfile('u1', 'Ada');
       expect(find.text(me.code), findsOneWidget);
-      expect(find.text('Friends'), findsNothing);
       expect(find.text('Online games'), findsNothing);
       expect(find.text('Sign out'), findsOneWidget);
+
+      await tester.tap(find.text('Friends'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FriendsScreen), findsOneWidget);
     },
   );
 
