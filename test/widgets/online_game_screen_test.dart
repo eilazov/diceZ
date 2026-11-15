@@ -256,4 +256,44 @@ void main() {
     store.gate!.complete();
     await tester.pumpAndSettle();
   });
+
+  testWidgets('holding a die while the save is pending leaves Roll and the '
+      'dice looking enabled', (tester) async {
+    await pump(tester, adaUser);
+    await tester.tap(find.byKey(const ValueKey('roll_button')));
+    await tester.pumpAndSettle();
+
+    FilledButton roll() =>
+        tester.widget<FilledButton>(find.byKey(const ValueKey('roll_button')));
+    expect(roll().onPressed, isNotNull);
+
+    store.gate = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('die_0')));
+    await tester.pump();
+
+    expect(roll().onPressed, isNotNull);
+
+    store.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(roll().onPressed, isNotNull);
+  });
+
+  testWidgets('holding a second die while the first save is pending keeps '
+      'both', (tester) async {
+    await pump(tester, adaUser);
+    await tester.tap(find.byKey(const ValueKey('roll_button')));
+    await tester.pumpAndSettle();
+
+    store.gate = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('die_0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('die_1')));
+    await tester.pump();
+
+    final held = (await store.get(id))!.game().held;
+    expect(held.take(2), [true, true]);
+
+    store.gate!.complete();
+    await tester.pumpAndSettle();
+  });
 }
