@@ -22,7 +22,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('play_button')));
+    await tester.tap(find.byKey(const ValueKey('offline_button')));
     await tester.pumpAndSettle();
 
     expect(find.byType(PlayMenuScreen), findsOneWidget);
@@ -34,8 +34,8 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
     await tester.pumpAndSettle();
 
+    expect(find.text('Play'), findsOneWidget);
     expect(find.text('Offline Game'), findsOneWidget);
-    expect(find.text('Online Game'), findsOneWidget);
     expect(find.text('Start'), findsNothing);
     expect(find.byType(SegmentedButton<int>), findsNothing);
   });
@@ -64,6 +64,18 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(OnlineHubScreen), findsOneWidget);
+  });
+
+  testWidgets('Play (online) comes before Offline Game', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Online Game'), findsNothing);
+    final play = tester.getTopLeft(find.byKey(const ValueKey('online_button')));
+    final offline = tester.getTopLeft(
+      find.byKey(const ValueKey('offline_button')),
+    );
+    expect(play.dy, lessThan(offline.dy));
   });
 
   testWidgets('there is no Players entry any more', (tester) async {

@@ -119,23 +119,23 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                   ),
                   _BestGameLine(history: _history),
                   const SizedBox(height: 40),
-                  FilledButton(
-                    key: const ValueKey('play_button'),
+                  FilledButton.icon(
+                    key: const ValueKey('online_button'),
+                    onPressed: _openOnline,
+                    icon: const Icon(Icons.casino),
+                    label: const Text('Play'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.tonal(
+                    key: const ValueKey('offline_button'),
                     onPressed: _openPlay,
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(52),
                     ),
                     child: const Text('Offline Game'),
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.tonalIcon(
-                    key: const ValueKey('online_button'),
-                    onPressed: _openOnline,
-                    icon: const Icon(Icons.casino),
-                    label: const Text('Online Game'),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                    ),
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
