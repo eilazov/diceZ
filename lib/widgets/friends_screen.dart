@@ -7,6 +7,7 @@ import '../services/firestore_online_match_store.dart';
 import '../services/friend_service.dart';
 import '../services/online_match_service.dart';
 import 'challenge_mode_dialog.dart';
+import 'confirm_dialog.dart';
 import 'friend_code_tile.dart';
 
 String accountDisplayName(AccountUser user) {
@@ -110,6 +111,19 @@ class _FriendsScreenState extends State<FriendsScreen> {
         _message = 'Challenge sent to ${friend.name}.';
       });
     });
+  }
+
+  Future<void> _remove(FriendProfile friend) async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Remove ${friend.name}?',
+      message:
+          'You will no longer be friends. You can add them again later '
+          'with their code.',
+      confirmLabel: 'Remove',
+    );
+    if (!confirmed || !mounted) return;
+    await _run(() => _service.remove(widget.user.uid, friend.uid));
   }
 
   Future<void> _send() async {
@@ -284,10 +298,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 IconButton(
                   tooltip: 'Remove friend',
                   icon: const Icon(Icons.person_remove),
-                  onPressed: _busy
-                      ? null
-                      : () =>
-                            _run(() => _service.remove(widget.user.uid, p.uid)),
+                  onPressed: _busy ? null : () => _remove(p),
                 ),
               ],
             ),

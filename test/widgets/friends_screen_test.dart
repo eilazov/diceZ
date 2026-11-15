@@ -125,4 +125,42 @@ void main() {
     expect(sent.players, ['a', 'b']);
     expect(sent.mode, GameMode.standard);
   });
+
+  group('removing a friend', () {
+    Future<FriendService> befriended(WidgetTester tester) async {
+      final store = InMemoryFriendStore();
+      final (service, bob) = await setUpOther(store);
+      final me = await service.myProfile('a', 'Ada');
+      await service.sendRequest(bob, me.code);
+      await service.accept(me, bob);
+      await pumpScreen(tester, service);
+      return service;
+    }
+
+    testWidgets('asks for confirmation and keeps the friend on Cancel', (
+      tester,
+    ) async {
+      final service = await befriended(tester);
+
+      await tester.tap(find.byTooltip('Remove friend'));
+      await tester.pumpAndSettle();
+      expect(find.text('Remove Bob?'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect((await service.load('a')).friends, hasLength(1));
+    });
+
+    testWidgets('removes the friend once confirmed', (tester) async {
+      final service = await befriended(tester);
+
+      await tester.tap(find.byTooltip('Remove friend'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove'));
+      await tester.pumpAndSettle();
+
+      expect((await service.load('a')).friends, isEmpty);
+    });
+  });
 }
