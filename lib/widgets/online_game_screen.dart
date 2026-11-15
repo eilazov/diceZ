@@ -221,7 +221,7 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
                     cards: game.scoreCards,
                     currentPlayer: seat,
                     currentDice: game.dice,
-                    canCommit: canAct && !_busy,
+                    canCommit: canAct,
                     onCommit: (ScoreCategory c) {
                       AppHaptics.commit();
                       _act(match, (g) => g.commitScore(c));

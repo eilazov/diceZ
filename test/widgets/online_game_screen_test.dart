@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dice_zee/models/friend_profile.dart';
+import 'package:dice_zee/models/online_match.dart';
 import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/services/auth_service.dart';
 import 'package:dice_zee/services/game_storage.dart';
@@ -20,14 +22,26 @@ const bob = FriendProfile(uid: 'b', name: 'Bob', code: 'BBBBBB');
 const adaUser = AccountUser(uid: 'a', displayName: 'Ada');
 const bobUser = AccountUser(uid: 'b', displayName: 'Bob');
 
+/// Writes land locally at once (like Firestore) but only finish saving when
+/// [gate] completes.
+class _SlowAckStore extends InMemoryOnlineMatchStore {
+  Completer<void>? gate;
+
+  @override
+  Future<void> update(OnlineMatch match) async {
+    await super.update(match);
+    await gate?.future;
+  }
+}
+
 void main() {
-  late InMemoryOnlineMatchStore store;
+  late _SlowAckStore store;
   late OnlineMatchService service;
   late String id;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    store = InMemoryOnlineMatchStore();
+    store = _SlowAckStore();
     service = OnlineMatchService(store);
     final m = await service.challenge(ada, bob, GameMode.standard);
     await service.accept(m, 'b');
@@ -182,5 +196,23 @@ void main() {
     final history = await const GameStorage().loadHistory();
     expect(history, hasLength(1));
     expect(history.single.players[0].name, 'Ada');
+  });
+
+  testWidgets('holding a die while the save is pending keeps the score '
+      'previews on screen', (tester) async {
+    await pump(tester, adaUser);
+    await tester.tap(find.byKey(const ValueKey('roll_button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('commit_chance')), findsOneWidget);
+
+    store.gate = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('die_0')));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('commit_chance')), findsOneWidget);
+
+    store.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('commit_chance')), findsOneWidget);
   });
 }
