@@ -137,11 +137,13 @@ class FirebaseAuthService implements AuthService, EmailSignIn {
       await cleanup(user.uid);
       await user.delete();
     } on FirebaseAuthException catch (e) {
+      if (!kReleaseMode) debugPrint('deleteAccount: $e');
       final failure = AuthFailure.fromCode(e.code);
       throw failure.cancelled
           ? failure
           : const AuthFailure('Could not delete your account. Try again.');
-    } catch (_) {
+    } catch (e) {
+      if (!kReleaseMode) debugPrint('deleteAccount: $e');
       throw const AuthFailure('Could not delete your account. Try again.');
     }
   }
