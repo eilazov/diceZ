@@ -30,50 +30,76 @@ void main() {
     expect(find.text('0 games'), findsOneWidget);
   });
 
-  testWidgets('lists one row per registered profile', (tester) async {
-    await playerStorage.addProfile('Levon');
-    await playerStorage.addProfile('Anna');
+  Future<void> saveGame({String? profileId, GameMode? mode}) =>
+      storage.saveResult(
+        GameResult(
+          playedAt: DateTime.utc(2026, 9, 7),
+          playerCount: 2,
+          mode: mode ?? GameMode.standard,
+          players: [
+            PlayerScore(
+              categoryScores: {
+                for (final c in ScoreCategory.values) c: 0,
+                ScoreCategory.yahtzee: 100,
+              },
+              profileId: profileId,
+              name: profileId == null ? null : 'Levon',
+            ), // total 100, winner
+            PlayerScore(
+              categoryScores: {
+                for (final c in ScoreCategory.values) c: 0,
+                ScoreCategory.sixes: 30,
+              },
+            ), // total 30, guest
+          ],
+        ),
+      );
+
+  testWidgets('signed out: only the Everyone row', (tester) async {
+    await saveGame();
+
+    await tester.pumpWidget(subject());
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ListTile), findsOneWidget);
+  });
+
+  testWidgets("the account row shows its own game and win counts", (
+    tester,
+  ) async {
+    await playerStorage.ensureAccountProfile('u1', 'Levon');
+    final levon = (await playerStorage.loadProfiles()).single;
+    await saveGame(profileId: levon.id);
 
     await tester.pumpWidget(subject());
     await tester.pumpAndSettle();
 
     expect(find.text('Levon'), findsOneWidget);
-    expect(find.text('Anna'), findsOneWidget);
+    expect(find.text('1 games · 1 wins'), findsOneWidget);
   });
 
-  testWidgets("a profile row shows its own game and win counts", (
+  testWidgets('the account row is hidden when it has no games in the mode', (
     tester,
   ) async {
-    await playerStorage.addProfile('Levon');
-    final levon = (await playerStorage.loadProfiles()).single;
-
-    await storage.saveResult(
-      GameResult(
-        playedAt: DateTime.utc(2026, 9, 7),
-        playerCount: 2,
-        players: [
-          PlayerScore(
-            categoryScores: {
-              for (final c in ScoreCategory.values) c: 0,
-              ScoreCategory.yahtzee: 100,
-            },
-            profileId: levon.id,
-            name: levon.name,
-          ), // total 100, winner
-          PlayerScore(
-            categoryScores: {
-              for (final c in ScoreCategory.values) c: 0,
-              ScoreCategory.sixes: 30,
-            },
-          ), // total 30, guest
-        ],
-      ),
-    );
+    await playerStorage.ensureAccountProfile('u1', 'Levon');
 
     await tester.pumpWidget(subject());
     await tester.pumpAndSettle();
 
-    expect(find.text('1 games · 1 wins'), findsOneWidget);
+    expect(find.text('Levon'), findsNothing);
+  });
+
+  testWidgets('legacy manual profiles never get a row', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'dice_zee.players': '[{"id":"1","name":"Anna"}]',
+    });
+    await saveGame(profileId: '1');
+
+    await tester.pumpWidget(subject());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Anna'), findsNothing);
+    expect(find.byType(ListTile), findsOneWidget);
   });
 
   testWidgets('tapping Everyone opens its detail screen', (tester) async {
