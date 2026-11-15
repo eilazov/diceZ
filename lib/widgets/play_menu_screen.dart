@@ -4,9 +4,9 @@ import '../models/game_mode.dart';
 import '../models/player_profile.dart';
 import '../services/player_storage.dart';
 import 'game_screen.dart';
-import 'player_select_screen.dart';
 
-/// Pick a player count and a rule set, then start a match.
+/// Pick a player count and a rule set, then start a match. Seat 1 plays as
+/// the signed-in account when there is one; every other seat is a guest.
 class PlayMenuScreen extends StatefulWidget {
   const PlayMenuScreen({super.key, this.playerStorage = const PlayerStorage()});
 
@@ -24,19 +24,8 @@ class _PlayMenuScreenState extends State<PlayMenuScreen> {
     final profiles = await widget.playerStorage.loadProfiles();
     if (!mounted) return;
 
-    if (profiles.isEmpty) {
-      _openGame(List<PlayerProfile?>.filled(_count, null));
-      return;
-    }
-    if (profiles.length == 1) {
-      _openGame([profiles.single, for (var i = 1; i < _count; i++) null]);
-      return;
-    }
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PlayerSelectScreen(playerCount: _count, mode: _mode),
-      ),
-    );
+    final account = profiles.where((p) => p.linkedToAccount).firstOrNull;
+    _openGame([account, for (var i = 1; i < _count; i++) null]);
   }
 
   void _openGame(List<PlayerProfile?> lineup) {

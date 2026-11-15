@@ -6,7 +6,6 @@ import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/services/player_storage.dart';
 import 'package:dice_zee/widgets/game_screen.dart';
 import 'package:dice_zee/widgets/play_menu_screen.dart';
-import 'package:dice_zee/widgets/player_select_screen.dart';
 
 /// The play menu is taller than the default 800x600 test surface.
 void _tall(WidgetTester tester) {
@@ -48,45 +47,43 @@ void main() {
     },
   );
 
-  testWidgets(
-    'starting with exactly one profile seats it first, no selection screen',
-    (tester) async {
-      _tall(tester);
-      const playerStorage = PlayerStorage();
-      await playerStorage.addProfile('Levon');
-      final levon = (await playerStorage.loadProfiles()).single;
-
-      await tester.pumpWidget(
-        const MaterialApp(home: PlayMenuScreen(playerStorage: playerStorage)),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('start_button')));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(PlayerSelectScreen), findsNothing);
-      final screen = tester.widget<GameScreen>(find.byType(GameScreen));
-      expect(screen.lineup, [levon, null]);
-    },
-  );
-
-  testWidgets('starting with 2+ profiles opens the player select screen', (
+  testWidgets('the signed-in account takes seat 1, the rest are guests', (
     tester,
   ) async {
     _tall(tester);
     const playerStorage = PlayerStorage();
-    await playerStorage.addProfile('Levon');
-    await playerStorage.addProfile('Anna');
+    await playerStorage.ensureAccountProfile('u1', 'Levon');
+    final levon = (await playerStorage.loadProfiles()).single;
 
     await tester.pumpWidget(
       const MaterialApp(home: PlayMenuScreen(playerStorage: playerStorage)),
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('3'));
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('start_button')));
     await tester.pumpAndSettle();
 
-    expect(find.byType(PlayerSelectScreen), findsOneWidget);
+    final screen = tester.widget<GameScreen>(find.byType(GameScreen));
+    expect(screen.lineup, [levon, null, null]);
+  });
+
+  testWidgets('legacy manual profiles are ignored: all guests', (tester) async {
+    _tall(tester);
+    SharedPreferences.setMockInitialValues({
+      'dice_zee.players':
+          '[{"id":"1","name":"Levon"},{"id":"2","name":"Anna"}]',
+    });
+
+    await tester.pumpWidget(const MaterialApp(home: PlayMenuScreen()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('start_button')));
+    await tester.pumpAndSettle();
+
+    final screen = tester.widget<GameScreen>(find.byType(GameScreen));
+    expect(screen.lineup, [null, null]);
   });
 
   testWidgets('offers a mode choice, standard selected by default', (
@@ -157,27 +154,5 @@ void main() {
       GameMode.standard,
     );
     expect(find.text('Round 1 / 13'), findsOneWidget);
-  });
-
-  testWidgets('the mode is passed on to the player select screen', (
-    tester,
-  ) async {
-    const playerStorage = PlayerStorage();
-    await playerStorage.addProfile('Levon');
-    await playerStorage.addProfile('Anna');
-    await tester.pumpWidget(
-      const MaterialApp(home: PlayMenuScreen(playerStorage: playerStorage)),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Extended'));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('start_button')));
-    await tester.pumpAndSettle();
-
-    expect(
-      tester.widget<PlayerSelectScreen>(find.byType(PlayerSelectScreen)).mode,
-      GameMode.extended,
-    );
   });
 }
