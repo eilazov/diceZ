@@ -6,21 +6,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:dice_zee/app_config.dart';
 import 'package:dice_zee/services/auth_service.dart';
 import 'package:dice_zee/services/friend_service.dart';
-import 'package:dice_zee/widgets/friends_screen.dart';
 import 'package:dice_zee/services/player_storage.dart';
 import 'package:dice_zee/widgets/account_screen.dart';
+import 'package:dice_zee/widgets/friends_screen.dart';
 
 import '../support/in_memory_friend_store.dart';
 
 class FakeAuthService implements AuthService {
-  FakeAuthService({this.user, this.appleSupported = true});
+  FakeAuthService({
+    this.user,
+    this.appleSupported = true,
+    this.emitEvents = true,
+  });
+
+  /// False simulates a platform whose auth stream misses events.
+  final bool emitEvents;
 
   final _controller = StreamController<AccountUser?>.broadcast();
   AccountUser? user;
   Object? failWith;
   final calls = <String>[];
+  int streamRequests = 0;
 
   @override
   final bool appleSupported;
@@ -29,13 +38,16 @@ class FakeAuthService implements AuthService {
   AccountUser? get currentUser => user;
 
   @override
-  Stream<AccountUser?> authStateChanges() => _controller.stream;
+  Stream<AccountUser?> authStateChanges() {
+    streamRequests++;
+    return _controller.stream;
+  }
 
   Future<void> _signIn(String provider) async {
     calls.add(provider);
     if (failWith != null) throw failWith!;
     user = const AccountUser(uid: 'u1', displayName: 'Ada', email: 'a@b.c');
-    _controller.add(user);
+    if (emitEvents) _controller.add(user);
   }
 
   @override
@@ -45,12 +57,32 @@ class FakeAuthService implements AuthService {
   Future<void> signInWithApple() => _signIn('apple');
 
   @override
+  Future<void> deleteAccount(Future<void> Function(String uid) cleanup) async {
+    calls.add('delete');
+    if (failWith != null) throw failWith!;
+    await cleanup(user!.uid);
+    user = null;
+    if (emitEvents) _controller.add(null);
+  }
+
+  @override
   Future<void> signOut() async {
     calls.add('signOut');
     user = null;
     _controller.add(null);
   }
 }
+
+class FakeEmailAuthService extends FakeAuthService implements EmailSignIn {
+  @override
+  Future<void> signInWithEmail(TestUser testUser) async {
+    calls.add('email:${testUser.email}');
+    user = AccountUser(uid: 'u2', displayName: testUser.name);
+    _controller.add(user);
+  }
+}
+
+const _ada = TestUser('Ada', 'ada@test.dev', 'test1234');
 
 const storage = PlayerStorage();
 
@@ -187,24 +219,169 @@ void main() {
     expect((await storage.loadProfiles()).single.name, 'Ada');
   });
 
-  testWidgets('signed in: shows friend code and opens Friends', (tester) async {
-    final service = FriendService(InMemoryFriendStore(), random: Random(2));
-    final auth = FakeAuthService(
-      user: const AccountUser(uid: 'u1', displayName: 'Ada', email: 'a@b.c'),
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        home: AccountScreen(authService: auth, friendService: service),
-      ),
-    );
+  testWidgets(
+    'signed in: shows friend code, opens Friends, has no Online button',
+    (tester) async {
+      final service = FriendService(InMemoryFriendStore(), random: Random(2));
+      final auth = FakeAuthService(
+        user: const AccountUser(uid: 'u1', displayName: 'Ada', email: 'a@b.c'),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AccountScreen(authService: auth, friendService: service),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final me = await service.myProfile('u1', 'Ada');
+      expect(find.text(me.code), findsOneWidget);
+      expect(find.text('Online games'), findsNothing);
+      expect(find.text('Sign out'), findsOneWidget);
+
+      await tester.tap(find.text('Friends'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FriendsScreen), findsOneWidget);
+    },
+  );
+
+  group('test users (emulator only)', () {
+    testWidgets('are offered when configured and the auth supports it', (
+      tester,
+    ) async {
+      final auth = FakeEmailAuthService();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AccountScreen(authService: auth, testUsers: const [_ada]),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Test user Ada'));
+      await tester.pumpAndSettle();
+
+      expect(auth.calls, ['email:ada@test.dev']);
+      expect(find.text('Sign out'), findsOneWidget);
+    });
+
+    testWidgets('are hidden by default', (tester) async {
+      await pumpScreen(tester, FakeEmailAuthService());
+
+      expect(find.textContaining('Test user'), findsNothing);
+    });
+
+    testWidgets('are hidden when the auth has no email sign-in', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AccountScreen(
+            authService: FakeAuthService(),
+            testUsers: const [_ada],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.textContaining('Test user'), findsNothing);
+    });
+  });
+
+  testWidgets('follows auth through one stream, not one per rebuild', (
+    tester,
+  ) async {
+    final auth = FakeAuthService();
+    await pumpScreen(tester, auth);
+
+    await tester.tap(find.text('Sign in with Google'));
     await tester.pumpAndSettle();
 
-    final me = await service.myProfile('u1', 'Ada');
-    expect(find.text(me.code), findsOneWidget);
+    expect(find.text('Sign out'), findsOneWidget);
+    expect(auth.streamRequests, 1);
+  });
 
-    await tester.tap(find.text('Friends'));
+  testWidgets('shows the signed-in view even if the auth stream is silent', (
+    tester,
+  ) async {
+    final auth = FakeAuthService(emitEvents: false);
+    await pumpScreen(tester, auth);
+
+    await tester.tap(find.text('Sign in with Google'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(FriendsScreen), findsOneWidget);
+    expect(find.text('Sign out'), findsOneWidget);
+  });
+
+  group('delete account', () {
+    const signedIn = AccountUser(uid: 'u1', displayName: 'Ada', email: 'a@b.c');
+
+    Future<List<String>> pumpSignedIn(
+      WidgetTester tester,
+      FakeAuthService auth,
+    ) async {
+      final deleted = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AccountScreen(
+            authService: auth,
+            friendService: FriendService(
+              InMemoryFriendStore(),
+              random: Random(2),
+            ),
+            deleteData: (uid) async => deleted.add(uid),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return deleted;
+    }
+
+    testWidgets('asks for confirmation and does nothing on Cancel', (
+      tester,
+    ) async {
+      final auth = FakeAuthService(user: signedIn);
+      final deleted = await pumpSignedIn(tester, auth);
+
+      await tester.tap(find.text('Delete account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete account?'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(auth.calls, isEmpty);
+      expect(deleted, isEmpty);
+      expect(find.text('Sign out'), findsOneWidget);
+    });
+
+    testWidgets('deletes the data and the account once confirmed', (
+      tester,
+    ) async {
+      final auth = FakeAuthService(user: signedIn);
+      final deleted = await pumpSignedIn(tester, auth);
+
+      await tester.tap(find.text('Delete account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(auth.calls, ['delete']);
+      expect(deleted, ['u1']);
+      expect(find.text('Sign in with Google'), findsOneWidget);
+    });
+
+    testWidgets('a failure keeps the account and says why', (tester) async {
+      final auth = FakeAuthService(user: signedIn)
+        ..failWith = const AuthFailure('Could not delete your account.');
+      await pumpSignedIn(tester, auth);
+
+      await tester.tap(find.text('Delete account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Could not delete your account.'), findsOneWidget);
+      expect(find.text('Sign out'), findsOneWidget);
+    });
   });
 }

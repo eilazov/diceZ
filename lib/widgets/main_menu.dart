@@ -4,18 +4,19 @@ import 'package:flutter/material.dart';
 
 import '../models/game_result.dart';
 import '../models/game_mode.dart';
+import '../models/player_profile.dart';
 import '../services/auth_service.dart';
 import '../services/game_storage.dart';
 import '../services/player_storage.dart';
 import '../services/sync_service.dart';
 import 'account_screen.dart';
+import 'online_hub_screen.dart';
 import 'pip_face.dart';
 import 'play_menu_screen.dart';
-import 'players_screen.dart';
 import 'statistics_screen.dart';
 import 'version_indicator.dart';
 
-/// App home: play, view statistics, manage players, or open the account.
+/// App home: play, go online, view statistics, or open the account.
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({
     super.key,
@@ -36,15 +37,32 @@ class MainMenuScreen extends StatefulWidget {
 }
 
 class _MainMenuScreenState extends State<MainMenuScreen> {
-  late Future<List<GameResult>> _history = widget.storage.loadHistory();
+  late Future<_BestData> _best = _loadBest();
   StreamSubscription<void>? _syncSub;
+
+  /// Match history plus the signed-in account's profile (null as a guest).
+  Future<_BestData> _loadBest() async {
+    final history = await widget.storage.loadHistory();
+    final profiles = await widget.playerStorage.loadProfiles();
+    return (history, profiles.where((p) => p.linkedToAccount).firstOrNull);
+  }
+
+  /// Opens [screen]; whatever it saved or changed (games, sign-in) shows up in
+  /// the best scores when it closes.
+  void _push(Widget screen) {
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => screen))
+        .then((_) {
+          if (mounted) setState(() => _best = _loadBest());
+        });
+  }
 
   @override
   void initState() {
     super.initState();
     // A cloud pull may bring in matches from other devices.
     _syncSub = SyncService.instance.changes.listen((_) {
-      if (mounted) setState(() => _history = widget.storage.loadHistory());
+      if (mounted) setState(() => _best = _loadBest());
     });
   }
 
@@ -54,32 +72,16 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     super.dispose();
   }
 
-  void _openPlay() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PlayMenuScreen(playerStorage: widget.playerStorage),
-      ),
-    );
-  }
+  void _openPlay() =>
+      _push(PlayMenuScreen(playerStorage: widget.playerStorage));
 
-  void _openStatistics() {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const StatisticsScreen()));
-  }
+  void _openOnline() =>
+      _push(OnlineHubScreen(authService: widget.authServiceBuilder?.call()));
 
-  void _openPlayers() {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const PlayersScreen()));
-  }
+  void _openStatistics() => _push(const StatisticsScreen());
 
-  void _openAccount() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            AccountScreen(authService: widget.authServiceBuilder?.call()),
-      ),
-    );
-  }
+  void _openAccount() =>
+      _push(AccountScreen(authService: widget.authServiceBuilder?.call()));
 
   @override
   Widget build(BuildContext context) {
@@ -113,27 +115,31 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                       ),
                     ],
                   ),
-                  _BestGameLine(history: _history),
+                  _BestGameLine(best: _best),
                   const SizedBox(height: 40),
-                  FilledButton(
-                    key: const ValueKey('play_button'),
+                  FilledButton.icon(
+                    key: const ValueKey('online_button'),
+                    onPressed: _openOnline,
+                    icon: const Icon(Icons.casino),
+                    label: const Text('Play'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.tonal(
+                    key: const ValueKey('offline_button'),
                     onPressed: _openPlay,
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(52),
                     ),
-                    child: const Text('Play'),
+                    child: const Text('Offline Game'),
                   ),
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: _openStatistics,
                     icon: const Icon(Icons.bar_chart),
                     label: const Text('Statistics'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _openPlayers,
-                    icon: const Icon(Icons.people_outline),
-                    label: const Text('Players'),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
@@ -153,29 +159,33 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   }
 }
 
-/// "Standard best · N" / "Extended best · N" for each mode with at least one
-/// recorded match; nothing before.
-class _BestGameLine extends StatelessWidget {
-  const _BestGameLine({required this.history});
+typedef _BestData = (List<GameResult>, PlayerProfile?);
 
-  final Future<List<GameResult>> history;
+/// "Standard best · N" for each mode in which the signed-in account has a
+/// result; nothing for guests or modes it hasn't played.
+class _BestGameLine extends StatelessWidget {
+  const _BestGameLine({required this.best});
+
+  final Future<_BestData> best;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return FutureBuilder<List<GameResult>>(
-      future: history,
+    return FutureBuilder<_BestData>(
+      future: best,
       builder: (context, snapshot) {
-        final games = snapshot.data;
-        if (games == null || games.isEmpty) return const SizedBox.shrink();
+        final data = snapshot.data;
+        final account = data?.$2;
+        if (data == null || account == null) return const SizedBox.shrink();
+        final games = data.$1;
         return Column(
           children: [
             for (final mode in GameMode.values)
-              if (games.any((g) => g.mode == mode))
+              if (_best(games, mode, account.id) case final int score)
                 Padding(
                   padding: const EdgeInsets.only(top: 10),
                   child: Text(
-                    '${mode.label} best · ${_best(games, mode)}',
+                    '${mode.label} best · $score',
                     key: ValueKey('best_${mode.name}'),
                     textAlign: TextAlign.center,
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -191,8 +201,14 @@ class _BestGameLine extends StatelessWidget {
     );
   }
 
-  static int _best(List<GameResult> games, GameMode mode) => games
-      .where((g) => g.mode == mode)
-      .expand((g) => g.players.map((p) => p.total))
-      .fold(0, (a, b) => a > b ? a : b);
+  /// The account's highest total in [mode], or null if it has none.
+  static int? _best(List<GameResult> games, GameMode mode, String profileId) {
+    final totals = [
+      for (final g in games)
+        if (g.mode == mode)
+          for (final p in g.players)
+            if (p.profileId == profileId) p.total,
+    ];
+    return totals.isEmpty ? null : totals.reduce((a, b) => a > b ? a : b);
+  }
 }

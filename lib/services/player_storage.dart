@@ -35,47 +35,10 @@ class PlayerStorage {
     }
   }
 
-  /// Overwrite the stored list (used by cloud sync).
-  Future<void> replaceProfiles(List<PlayerProfile> profiles) =>
-      _saveProfiles(profiles);
-
   Future<void> _saveProfiles(List<PlayerProfile> profiles) async {
     final prefs = await SharedPreferences.getInstance();
     final encoded = jsonEncode(profiles.map((p) => p.toJson()).toList());
     await prefs.setString(_profilesKey, encoded);
-  }
-
-  /// Append a new profile named [name] with a freshly generated id.
-  Future<void> addProfile(String name) async {
-    final profiles = await loadProfiles();
-    profiles.add(
-      PlayerProfile(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        name: name,
-      ),
-    );
-    await _saveProfiles(profiles);
-  }
-
-  /// Rename the profile with id [id] to [name]. No-op if not found.
-  Future<void> renameProfile(String id, String name) async {
-    final profiles = await loadProfiles();
-    final index = profiles.indexWhere((p) => p.id == id);
-    if (index == -1) return;
-    profiles[index] = PlayerProfile(
-      id: id,
-      name: name,
-      linkedToAccount: profiles[index].linkedToAccount,
-    );
-    await _saveProfiles(profiles);
-  }
-
-  /// Remove the profile with id [id]. No-op if not found or if it is the
-  /// account profile (see [removeAccountProfile]).
-  Future<void> deleteProfile(String id) async {
-    final profiles = await loadProfiles();
-    profiles.removeWhere((p) => p.id == id && !p.linkedToAccount);
-    await _saveProfiles(profiles);
   }
 
   /// Make sure the signed-in account [uid] has a profile, listed first. The

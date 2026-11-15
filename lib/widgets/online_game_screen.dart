@@ -15,7 +15,7 @@ import '../services/online_match_service.dart';
 import '../services/player_storage.dart';
 import 'dice_zee_celebration.dart';
 import 'game_controls.dart';
-import 'results_screen.dart';
+import 'online_results_screen.dart';
 import 'score_table.dart';
 
 /// One online match. Renders whatever the shared document says; the controls
@@ -49,6 +49,9 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
       widget.service ?? OnlineMatchService(FirestoreOnlineMatchStore());
   late final Stream<OnlineMatch?> _stream = _service.watch(widget.matchId);
   bool _finishHandled = false;
+
+  /// A save is in flight. Only guards against overlapping writes; it is not
+  /// rendered, so controls don't flicker while a move is being acknowledged.
   bool _busy = false;
 
   /// Identifies the roll the board last showed, so a snapshot is celebrated
@@ -91,12 +94,16 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
     }
   }
 
+  /// [exclusive] actions (roll, commit) are dropped while another save is in
+  /// flight. Hold toggles are not: each tap builds on the newest snapshot, so
+  /// quick taps on two dice both count.
   Future<void> _act(
     OnlineMatch match,
-    void Function(DiceGame game) apply,
-  ) async {
-    if (_busy) return;
-    setState(() => _busy = true);
+    void Function(DiceGame game) apply, {
+    bool exclusive = true,
+  }) async {
+    if (exclusive && _busy) return;
+    _busy = true;
     try {
       final game = match.game(random: widget.random);
       apply(game);
@@ -108,7 +115,7 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      _busy = false;
     }
   }
 
@@ -128,18 +135,34 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
     }
     if (!mounted) return;
     AppHaptics.gameOver();
-    final game = match.game();
-    await Navigator.of(context).push<ResultsAction>(
+    final next = await Navigator.of(context).push<Object?>(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => ResultsScreen(
-          standings: game.standings,
-          winner: game.winner,
-          names: match.names,
+        builder: (_) => OnlineResultsScreen(
+          match: match,
+          uid: widget.user.uid,
+          service: _service,
         ),
       ),
     );
-    if (mounted) Navigator.of(context).pop();
+    if (!mounted) return;
+    if (next is String) {
+      // Both players asked for a rematch: continue straight into it.
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => OnlineGameScreen(
+            user: widget.user,
+            matchId: next,
+            service: widget.service,
+            storage: widget.storage,
+            playerStorage: widget.playerStorage,
+            random: widget.random,
+          ),
+        ),
+      );
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -185,7 +208,7 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
     final seat = game.currentPlayer.clamp(0, 1);
     final mine = match.isMyTurn(widget.user.uid);
     final color = SeatPalette.color(seat);
-    final canRoll = mine && !_busy && game.rollsRemaining > 0 && !game.isOver;
+    final canRoll = mine && game.rollsRemaining > 0 && !game.isOver;
     final canAct = mine && game.hasRolledThisRound && !game.isOver;
     final opponent = match.names[1 - (match.seatOf(widget.user.uid) ?? 0)];
 
@@ -221,8 +244,9 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
                     cards: game.scoreCards,
                     currentPlayer: seat,
                     currentDice: game.dice,
-                    canCommit: canAct && !_busy,
+                    canCommit: canAct,
                     onCommit: (ScoreCategory c) {
+                      if (_busy) return;
                       AppHaptics.commit();
                       _act(match, (g) => g.commitScore(c));
                     },
@@ -233,7 +257,7 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
               ControlDeck(
                 dice: game.dice,
                 held: game.held,
-                canHold: canAct && !_busy,
+                canHold: canAct,
                 placeholder: !game.hasRolledThisRound,
                 rollCount:
                     game.round * 100 + seat * 10 + (3 - game.rollsRemaining),
@@ -247,7 +271,7 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
                 },
                 onToggleHold: (i) {
                   AppHaptics.hold();
-                  _act(match, (g) => g.toggleHold(i));
+                  _act(match, (g) => g.toggleHold(i), exclusive: false);
                 },
               ),
             ],

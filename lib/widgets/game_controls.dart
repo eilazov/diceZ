@@ -113,11 +113,10 @@ class ControlDeck extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    final String label = canRoll
-        ? 'Roll · $rollsRemaining left'
-        : awaitingCommit
+    // The count shows on the opponent's (disabled) button too.
+    final String label = awaitingCommit
         ? 'Tap a category to score'
-        : 'Roll';
+        : 'Roll · $rollsRemaining left';
 
     return Container(
       decoration: BoxDecoration(

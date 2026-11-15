@@ -17,6 +17,8 @@ class OnlineMatch {
     required this.state,
     required this.createdAt,
     this.finishedAt,
+    this.rematch = const [],
+    this.rematchMatchId,
   });
 
   final String id;
@@ -29,6 +31,12 @@ class OnlineMatch {
   final Map<String, dynamic> state;
   final DateTime createdAt;
   final DateTime? finishedAt;
+
+  /// Uids of the players who asked for a rematch of this finished match.
+  final List<String> rematch;
+
+  /// The match started once both asked; null until then.
+  final String? rematchMatchId;
 
   int? seatOf(String uid) {
     final seat = players.indexOf(uid);
@@ -45,6 +53,8 @@ class OnlineMatch {
     OnlineMatchStatus? status,
     Map<String, dynamic>? state,
     DateTime? finishedAt,
+    List<String>? rematch,
+    String? rematchMatchId,
   }) => OnlineMatch(
     id: id ?? this.id,
     players: players,
@@ -54,6 +64,8 @@ class OnlineMatch {
     state: state ?? this.state,
     createdAt: createdAt,
     finishedAt: finishedAt ?? this.finishedAt,
+    rematch: rematch ?? this.rematch,
+    rematchMatchId: rematchMatchId ?? this.rematchMatchId,
   );
 
   Map<String, dynamic> toJson() => {
@@ -64,6 +76,8 @@ class OnlineMatch {
     'state': state,
     'createdAt': createdAt.millisecondsSinceEpoch,
     if (finishedAt != null) 'finishedAt': finishedAt!.millisecondsSinceEpoch,
+    if (rematch.isNotEmpty) 'rematch': rematch,
+    if (rematchMatchId != null) 'rematchMatchId': rematchMatchId,
   };
 
   factory OnlineMatch.fromJson(String id, Map<String, dynamic> json) =>
@@ -82,5 +96,7 @@ class OnlineMatch {
             : DateTime.fromMillisecondsSinceEpoch(
                 (json['finishedAt'] as num).toInt(),
               ),
+        rematch: List<String>.from(json['rematch'] as List? ?? const []),
+        rematchMatchId: json['rematchMatchId'] as String?,
       );
 }

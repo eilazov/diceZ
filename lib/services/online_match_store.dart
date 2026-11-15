@@ -15,5 +15,12 @@ abstract class OnlineMatchStore {
   Stream<List<OnlineMatch>> watchFor(String uid);
 
   Future<void> update(OnlineMatch match);
+
+  /// Adds [uid] to the match's rematch votes. Atomic, so both players voting
+  /// at once keep both votes.
+  Future<void> addRematchVote(String id, String uid);
+
+  /// Records the match started for a rematch.
+  Future<void> setRematchMatch(String id, String newMatchId);
   Future<void> delete(String id);
 }

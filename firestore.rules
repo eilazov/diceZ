@@ -17,6 +17,8 @@ service cloud.firestore {
     match /friendCodes/{code} {
       allow get: if signedIn();
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      // Account deletion frees the owner's code.
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 
     // Online matches: only the two players can see or change one, and a match

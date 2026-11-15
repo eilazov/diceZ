@@ -11,8 +11,9 @@ import '../services/player_storage.dart';
 import '../services/sync_service.dart';
 import 'player_stats_screen.dart';
 
-/// A game-mode switch, then "Everyone" plus one row per registered player
-/// profile; tap a row for its scoped statistics in the chosen mode.
+/// A game-mode switch, then "Everyone" plus a row for the signed-in account
+/// (once it has games in the chosen mode); tap a row for its scoped
+/// statistics.
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({
     super.key,
@@ -79,6 +80,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     PlayerProfile profile,
   ) {
     final stats = Statistics.from(history, profileId: profile.id, mode: _mode);
+    if (stats.gamesPlayed == 0) return const SizedBox.shrink();
     return ListTile(
       key: ValueKey('stats_${profile.id}'),
       title: Text(profile.name),
@@ -131,7 +133,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _open(context, title: 'Everyone'),
               ),
-              for (final profile in profiles)
+              for (final profile in profiles.where((p) => p.linkedToAccount))
                 _profileRow(context, history, profile),
             ],
           );

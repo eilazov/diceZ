@@ -93,4 +93,45 @@ class OnlineMatchService {
       ],
     );
   }
+
+  /// Records that [uid] wants a rematch of the finished [match].
+  Future<void> voteRematch(OnlineMatch match, String uid) async {
+    if (match.status != OnlineMatchStatus.finished ||
+        match.seatOf(uid) == null) {
+      throw StateError('only a player of a finished match can ask for one');
+    }
+    await _store.addRematchVote(match.id, uid);
+  }
+
+  /// Once both players have asked, the player who takes seat 0 in the new
+  /// match (the old seat 1, so the starter alternates) creates it already
+  /// active and links it from [match]. Returns the new id, or null if it is
+  /// not [uid]'s job or not time yet.
+  Future<String?> startRematchIfReady(OnlineMatch match, String uid) async {
+    if (match.status != OnlineMatchStatus.finished ||
+        match.rematchMatchId != null ||
+        match.rematch.length < 2 ||
+        match.seatOf(uid) != 1) {
+      return null;
+    }
+    final next = OnlineMatch(
+      id: '',
+      players: [match.players[1], match.players[0]],
+      names: [match.names[1], match.names[0]],
+      mode: match.mode,
+      status: OnlineMatchStatus.active,
+      state: DiceGame(playerCount: 2, mode: match.mode).toJson(),
+      createdAt: DateTime.now(),
+    );
+    final id = await _store.create(next);
+    await _store.setRematchMatch(match.id, id);
+    return id;
+  }
+
+  /// Account deletion: removes every match [uid] plays in.
+  Future<void> deleteAllFor(String uid) async {
+    for (final m in await _store.watchFor(uid).first) {
+      await _store.delete(m.id);
+    }
+  }
 }

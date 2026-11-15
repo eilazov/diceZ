@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../app_config.dart';
+
 /// The signed-in account, stripped of Firebase types.
 class AccountUser {
   const AccountUser({required this.uid, this.displayName, this.email});
@@ -54,11 +56,21 @@ abstract class AuthService {
   Future<void> signInWithGoogle();
   Future<void> signInWithApple();
   Future<void> signOut();
+
+  /// Deletes the signed-in account. [cleanup] removes its server-side data
+  /// first, while it can still be authorised. Throws [AuthFailure].
+  Future<void> deleteAccount(Future<void> Function(String uid) cleanup);
+}
+
+/// Optional extra on an [AuthService]: sign in as a fixed [TestUser] without a
+/// provider. Only offered against the Firebase emulator (see [AppConfig]).
+abstract interface class EmailSignIn {
+  Future<void> signInWithEmail(TestUser testUser);
 }
 
 /// Firebase-backed [AuthService]. Uses Firebase's provider flow (popup on
 /// web), so no extra sign-in packages are needed.
-class FirebaseAuthService implements AuthService {
+class FirebaseAuthService implements AuthService, EmailSignIn {
   FirebaseAuthService({FirebaseAuth? auth})
     : _auth = auth ?? FirebaseAuth.instance;
 
@@ -85,8 +97,74 @@ class FirebaseAuthService implements AuthService {
   @override
   Future<void> signInWithApple() => _signIn(AppleAuthProvider());
 
+  /// Signs in as [testUser], creating the account first if the emulator has
+  /// never seen it. Refuses to run outside emulator mode.
+  @override
+  Future<void> signInWithEmail(TestUser testUser) async {
+    if (!AppConfig.useEmulator) {
+      throw const AuthFailure('Test sign-in is only available on emulators.');
+    }
+    try {
+      try {
+        await _auth.signInWithEmailAndPassword(
+          email: testUser.email,
+          password: testUser.password,
+        );
+      } on FirebaseAuthException catch (e) {
+        if (e.code != 'user-not-found' && e.code != 'invalid-credential') {
+          rethrow;
+        }
+        final created = await _auth.createUserWithEmailAndPassword(
+          email: testUser.email,
+          password: testUser.password,
+        );
+        await created.user?.updateDisplayName(testUser.name);
+      }
+    } on FirebaseAuthException catch (e) {
+      throw AuthFailure.fromCode(e.code);
+    }
+  }
+
   @override
   Future<void> signOut() => _auth.signOut();
+
+  @override
+  Future<void> deleteAccount(Future<void> Function(String uid) cleanup) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    try {
+      await _reauthenticate(user);
+      await cleanup(user.uid);
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      if (!kReleaseMode) debugPrint('deleteAccount: $e');
+      final failure = AuthFailure.fromCode(e.code);
+      throw failure.cancelled
+          ? failure
+          : const AuthFailure('Could not delete your account. Try again.');
+    } catch (e) {
+      if (!kReleaseMode) debugPrint('deleteAccount: $e');
+      throw const AuthFailure('Could not delete your account. Try again.');
+    }
+  }
+
+  /// Deleting is sensitive, so confirm it is really the owner by signing in
+  /// with their provider again. Accounts without one (emulator test users,
+  /// who just signed in) skip this.
+  Future<void> _reauthenticate(User user) async {
+    final providerId = user.providerData.firstOrNull?.providerId;
+    final AuthProvider? provider = switch (providerId) {
+      'google.com' => GoogleAuthProvider(),
+      'apple.com' => AppleAuthProvider(),
+      _ => null,
+    };
+    if (provider == null) return;
+    if (kIsWeb) {
+      await user.reauthenticateWithPopup(provider);
+    } else {
+      await user.reauthenticateWithProvider(provider);
+    }
+  }
 
   Future<void> _signIn(AuthProvider provider) async {
     try {

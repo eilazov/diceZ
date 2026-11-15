@@ -16,71 +16,6 @@ void main() {
     expect(await storage.loadProfiles(), isEmpty);
   });
 
-  test('addProfile appends a new profile with a generated id', () async {
-    await storage.addProfile('Levon');
-
-    final profiles = await storage.loadProfiles();
-    expect(profiles, hasLength(1));
-    expect(profiles.single.name, 'Levon');
-    expect(profiles.single.id, isNotEmpty);
-  });
-
-  test('addProfile preserves insertion order', () async {
-    await storage.addProfile('Levon');
-    await storage.addProfile('Anna');
-
-    final names = (await storage.loadProfiles()).map((p) => p.name).toList();
-    expect(names, ['Levon', 'Anna']);
-  });
-
-  test('addProfile gives each profile a distinct id', () async {
-    await storage.addProfile('Levon');
-    await storage.addProfile('Anna');
-
-    final ids = (await storage.loadProfiles()).map((p) => p.id).toList();
-    expect(ids.toSet(), hasLength(2));
-  });
-
-  test('renameProfile updates only the matching profile', () async {
-    await storage.addProfile('Levon');
-    await storage.addProfile('Anna');
-    final id = (await storage.loadProfiles()).first.id;
-
-    await storage.renameProfile(id, 'Levon E.');
-
-    final names = (await storage.loadProfiles()).map((p) => p.name).toList();
-    expect(names, ['Levon E.', 'Anna']);
-  });
-
-  test('renameProfile is a no-op for an unknown id', () async {
-    await storage.addProfile('Levon');
-
-    await storage.renameProfile('missing', 'X');
-
-    final names = (await storage.loadProfiles()).map((p) => p.name).toList();
-    expect(names, ['Levon']);
-  });
-
-  test('deleteProfile removes only the matching profile', () async {
-    await storage.addProfile('Levon');
-    await storage.addProfile('Anna');
-    final id = (await storage.loadProfiles()).first.id;
-
-    await storage.deleteProfile(id);
-
-    final names = (await storage.loadProfiles()).map((p) => p.name).toList();
-    expect(names, ['Anna']);
-  });
-
-  test('deleteProfile is a no-op for an unknown id', () async {
-    await storage.addProfile('Levon');
-
-    await storage.deleteProfile('missing');
-
-    final names = (await storage.loadProfiles()).map((p) => p.name).toList();
-    expect(names, ['Levon']);
-  });
-
   test('unparseable legacy entries are skipped, not thrown', () async {
     SharedPreferences.setMockInitialValues({
       'dice_zee.players': jsonEncode([
@@ -95,54 +30,35 @@ void main() {
   });
 
   group('account profile', () {
-    test('ensureAccountProfile adds a flagged profile first', () async {
-      await storage.addProfile('Anna');
-
+    test('ensureAccountProfile adds a flagged profile', () async {
       await storage.ensureAccountProfile('uid1', 'Levon');
 
       final profiles = await storage.loadProfiles();
-      expect(profiles.map((p) => p.name), ['Levon', 'Anna']);
-      expect(profiles.first.linkedToAccount, isTrue);
-      expect(profiles.first.id, 'account_uid1');
+      expect(profiles, hasLength(1));
+      expect(profiles.single.linkedToAccount, isTrue);
+      expect(profiles.single.id, 'account_uid1');
+      expect(profiles.single.name, 'Levon');
     });
 
     test(
-      'ensureAccountProfile is idempotent and keeps a renamed name',
+      'ensureAccountProfile is idempotent and keeps the first name',
       () async {
         await storage.ensureAccountProfile('uid1', 'Levon');
-        await storage.renameProfile('account_uid1', 'Lev');
 
-        await storage.ensureAccountProfile('uid1', 'Levon');
+        await storage.ensureAccountProfile('uid1', 'Other');
 
         final profiles = await storage.loadProfiles();
         expect(profiles, hasLength(1));
-        expect(profiles.single.name, 'Lev');
-        expect(profiles.single.linkedToAccount, isTrue);
+        expect(profiles.single.name, 'Levon');
       },
     );
 
-    test('rename keeps the account flag', () async {
-      await storage.ensureAccountProfile('uid1', 'Levon');
-      await storage.renameProfile('account_uid1', 'Lev');
-
-      expect((await storage.loadProfiles()).single.linkedToAccount, isTrue);
-    });
-
-    test('removeAccountProfile removes only the account profile', () async {
-      await storage.addProfile('Anna');
+    test('removeAccountProfile removes the account profile', () async {
       await storage.ensureAccountProfile('uid1', 'Levon');
 
       await storage.removeAccountProfile();
 
-      expect((await storage.loadProfiles()).map((p) => p.name), ['Anna']);
-    });
-
-    test('deleteProfile refuses the account profile', () async {
-      await storage.ensureAccountProfile('uid1', 'Levon');
-
-      await storage.deleteProfile('account_uid1');
-
-      expect(await storage.loadProfiles(), hasLength(1));
+      expect(await storage.loadProfiles(), isEmpty);
     });
   });
 }

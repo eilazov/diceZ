@@ -12,6 +12,7 @@ void main() {
 
     expect(find.byType(MainMenuScreen), findsOneWidget);
     expect(find.text('Play'), findsOneWidget);
+    expect(find.text('Offline Game'), findsOneWidget);
     expect(find.text('Statistics'), findsOneWidget);
   });
 }

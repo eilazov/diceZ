@@ -46,6 +46,21 @@ class InMemoryOnlineMatchStore implements OnlineMatchStore {
   }
 
   @override
+  Future<void> addRematchVote(String id, String uid) async {
+    final m = matches[id]!;
+    if (!m.rematch.contains(uid)) {
+      matches[id] = m.copyWith(rematch: [...m.rematch, uid]);
+    }
+    _changes.add(null);
+  }
+
+  @override
+  Future<void> setRematchMatch(String id, String newMatchId) async {
+    matches[id] = matches[id]!.copyWith(rematchMatchId: newMatchId);
+    _changes.add(null);
+  }
+
+  @override
   Future<void> delete(String id) async {
     matches.remove(id);
     _changes.add(null);

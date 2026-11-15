@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:dice_zee/models/friend_profile.dart';
+import 'package:dice_zee/models/online_match.dart';
 import 'package:dice_zee/models/game_mode.dart';
 import 'package:dice_zee/services/auth_service.dart';
 import 'package:dice_zee/services/game_storage.dart';
@@ -20,14 +23,26 @@ const bob = FriendProfile(uid: 'b', name: 'Bob', code: 'BBBBBB');
 const adaUser = AccountUser(uid: 'a', displayName: 'Ada');
 const bobUser = AccountUser(uid: 'b', displayName: 'Bob');
 
+/// Writes land locally at once (like Firestore) but only finish saving when
+/// [gate] completes.
+class _SlowAckStore extends InMemoryOnlineMatchStore {
+  Completer<void>? gate;
+
+  @override
+  Future<void> update(OnlineMatch match) async {
+    await super.update(match);
+    await gate?.future;
+  }
+}
+
 void main() {
-  late InMemoryOnlineMatchStore store;
+  late _SlowAckStore store;
   late OnlineMatchService service;
   late String id;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    store = InMemoryOnlineMatchStore();
+    store = _SlowAckStore();
     service = OnlineMatchService(store);
     final m = await service.challenge(ada, bob, GameMode.standard);
     await service.accept(m, 'b');
@@ -182,5 +197,184 @@ void main() {
     final history = await const GameStorage().loadHistory();
     expect(history, hasLength(1));
     expect(history.single.players[0].name, 'Ada');
+  });
+
+  testWidgets('holding a die while the save is pending keeps the score '
+      'previews on screen', (tester) async {
+    await pump(tester, adaUser);
+    await tester.tap(find.byKey(const ValueKey('roll_button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('commit_chance')), findsOneWidget);
+
+    store.gate = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('die_0')));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('commit_chance')), findsOneWidget);
+
+    store.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('commit_chance')), findsOneWidget);
+  });
+
+  testWidgets('tapping a score while a save is pending does nothing, '
+      'not even a haptic', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final haptics = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await pump(tester, adaUser);
+    await tester.tap(find.byKey(const ValueKey('roll_button')));
+    await tester.pumpAndSettle();
+
+    store.gate = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('die_0')));
+    await tester.pump();
+    expect(haptics, contains('HapticFeedbackType.selectionClick'));
+    haptics.clear();
+    await tester.tap(find.byKey(const ValueKey('commit_chance')));
+    await tester.pump();
+
+    expect(haptics, isNot(contains('HapticFeedbackType.lightImpact')));
+    expect((await store.get(id))!.game().round, 1);
+
+    store.gate!.complete();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('holding a die while the save is pending leaves Roll and the '
+      'dice looking enabled', (tester) async {
+    await pump(tester, adaUser);
+    await tester.tap(find.byKey(const ValueKey('roll_button')));
+    await tester.pumpAndSettle();
+
+    FilledButton roll() =>
+        tester.widget<FilledButton>(find.byKey(const ValueKey('roll_button')));
+    expect(roll().onPressed, isNotNull);
+
+    store.gate = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('die_0')));
+    await tester.pump();
+
+    expect(roll().onPressed, isNotNull);
+
+    store.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(roll().onPressed, isNotNull);
+  });
+
+  testWidgets('holding a second die while the first save is pending keeps '
+      'both', (tester) async {
+    await pump(tester, adaUser);
+    await tester.tap(find.byKey(const ValueKey('roll_button')));
+    await tester.pumpAndSettle();
+
+    store.gate = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('die_0')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('die_1')));
+    await tester.pump();
+
+    final held = (await store.get(id))!.game().held;
+    expect(held.take(2), [true, true]);
+
+    store.gate!.complete();
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("the opponent's rolls left are counted on the Roll button", (
+    tester,
+  ) async {
+    await pump(tester, bobUser);
+    expect(find.text('Roll · 3 left'), findsOneWidget);
+
+    await adaRolls(Random(2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Roll · 2 left'), findsOneWidget);
+  });
+
+  group('rematch', () {
+    /// Plays the whole match out from outside the widget.
+    Future<void> finishMatch() async {
+      var m = (await store.get(id))!;
+      final game = m.game(random: Random(1));
+      final cats = GameMode.standard.categories;
+      for (var i = 0; i < cats.length * 2; i++) {
+        game.roll();
+        final mover = game.currentPlayer == 0 ? 'a' : 'b';
+        game.commitScore(cats[i ~/ 2]);
+        m = await service.saveTurn(m, mover, game);
+      }
+    }
+
+    testWidgets('asking for a rematch records the vote and waits', (
+      tester,
+    ) async {
+      await finishMatch();
+      await pump(tester, adaUser);
+
+      await tester.tap(find.byKey(const ValueKey('rematch_button')));
+      await tester.pumpAndSettle();
+
+      expect((await store.get(id))!.rematch, ['a']);
+      expect(find.text('Waiting for Bob…'), findsOneWidget);
+      final button = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('rematch_button')),
+      );
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets('the second player to agree starts the new game for them', (
+      tester,
+    ) async {
+      await finishMatch();
+      await service.voteRematch((await store.get(id))!, 'a');
+      await pump(tester, bobUser);
+      expect(find.text('Rematch · Ada is ready'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('rematch_button')));
+      await tester.pumpAndSettle();
+
+      expect(store.matches.length, 2);
+      final next = store.matches.values.firstWhere((m) => m.id != id);
+      expect(next.players, ['b', 'a']);
+      expect(find.text('vs Ada'), findsOneWidget);
+      expect(find.text('Your turn'), findsOneWidget);
+    });
+
+    testWidgets('the waiting player is taken into the new game', (
+      tester,
+    ) async {
+      await finishMatch();
+      await pump(tester, adaUser);
+      await tester.tap(find.byKey(const ValueKey('rematch_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Waiting for Bob…'), findsOneWidget);
+
+      // Bob agrees on his own device.
+      final done = (await store.get(id))!;
+      await service.voteRematch(done, 'b');
+      await service.startRematchIfReady((await store.get(id))!, 'b');
+      await tester.pumpAndSettle();
+
+      expect(find.text('vs Bob'), findsOneWidget);
+      expect(find.text("Bob's turn"), findsOneWidget);
+    });
   });
 }

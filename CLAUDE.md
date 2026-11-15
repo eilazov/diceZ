@@ -6,6 +6,7 @@ only — no App Store / Play Store release.
 Design specs (newest last):
 - [docs/superpowers/specs/2026-09-07-dice-zee-design.md](docs/superpowers/specs/2026-09-07-dice-zee-design.md) — core single-player game
 - [docs/superpowers/specs/2026-09-07-multiplayer-and-menu-design.md](docs/superpowers/specs/2026-09-07-multiplayer-and-menu-design.md) — 2–4 players, menu, statistics
+- [docs/superpowers/specs/2026-11-15-online-hub-and-menu-rework-design.md](docs/superpowers/specs/2026-11-15-online-hub-and-menu-rework-design.md) — Online hub on the main menu; local player profiles removed
 
 ## Gameplay
 
@@ -40,7 +41,7 @@ lib/
     game_storage.dart   shared_preferences wrapper: saveResult / loadHistory
                        (skips unparseable legacy entries).
   widgets/
-    main_menu.dart       MainMenuScreen: 2/3/4-player buttons + Statistics.
+    main_menu.dart       MainMenuScreen: Play (online), Offline Game, Statistics, Account.
     game_screen.dart     StatefulWidget; owns DiceGame; turn banner, dice, Roll,
                        shared ScoreTable, end-of-match summary + save.
     dice_row.dart        the 5 dice; tap to hold; roll animation.
@@ -73,12 +74,43 @@ deployed/merged by hand).
 
 Two friends play one match from two phones, asynchronously. `liveMatches/{id}`
 holds a `DiceGame` JSON snapshot (`DiceGame.toJson/fromJson`); `OnlineMatchService`
-(over `OnlineMatchStore`) enforces who may accept / save a turn. Challenge from
-`FriendsScreen`; invites and active matches in `OnlineMatchesScreen`; play in
-`OnlineGameScreen` (shares `TurnHeader`/`ControlDeck` with `GameScreen`). The
-active player's device rolls — no anti-cheat, no push. Design:
+(over `OnlineMatchStore`) enforces who may accept / save a turn. Entry is the
+main menu's Online button -> `OnlineHubScreen` (sign-in prompt or
+`OnlineMatchesScreen`: invites, active matches, New game -> pick friend + mode,
+Friends action); play in `OnlineGameScreen` (shares `TurnHeader`/`ControlDeck` with `GameScreen`). The
+active player's device rolls — no anti-cheat, no push. Rematch: on the results
+screen each player votes (`rematch` uid list, `arrayUnion`); the old seat 1's device
+creates the new active match (seats swapped) and links it via `rematchMatchId`, and
+both screens move into it (`OnlineResultsScreen`). Design:
 `docs/superpowers/specs/2026-10-28-online-friend-games-design.md`. Rules in
 `firestore.rules` must be republished by hand.
+
+### Testing online games locally (Firebase emulators)
+
+Two players are needed, and Google sign-in can't be scripted, so dev builds can run
+against the Auth + Firestore emulators with two fixed test users (Ada, Bob). Nothing
+touches the real project; emulator data is lost when the emulators stop.
+
+```bash
+firebase emulators:start --only auth,firestore --project demo-dicez
+flutter build web --profile --dart-define=USE_EMULATOR=true   # serve build/web
+```
+
+Use `--profile` (or `flutter run`): `AppConfig.useEmulator` is forced off in release
+builds, so the test-user buttons can never ship. On Android emulators add
+`--dart-define=EMULATOR_HOST=10.0.2.2`. Open the app on `http://localhost:8087` (sign
+in as Ada) and `http://127.0.0.1:8087` (Bob) — different origins keep separate
+sign-ins. Account -> "Test user Ada/Bob", then friend code -> Friends -> challenge.
+`lib/app_config.dart` holds the flags and test users.
+
+## Account deletion
+
+Account -> Delete account (confirm dialog). `AuthService.deleteAccount(cleanup)`
+re-authenticates with the provider (Google/Apple; skipped for emulator test users),
+runs `AccountCleanup` (friends + requests on both sides, friend code + profile, the
+account's `liveMatches`, `users/{uid}/matches`), then deletes the Firebase user. Local
+match history stays on the device. `firestore.rules` gained `allow delete` on
+`friendCodes` for the owner and must be republished by hand.
 
 ## State management & navigation
 
@@ -95,7 +127,10 @@ routing package.
 `shared_preferences` only — a single JSON key (`dice_zee.history`) holding a list
 of `GameResult`. `loadHistory` silently drops entries it can't parse, so a schema
 change doesn't need a migration for this personal app. Statistics are derived from
-that list, not stored separately.
+that list, not stored separately. A second key (`dice_zee.players`) is used only for the
+signed-in account's profile (offline seat 1 + its statistics row); leftover manual
+profiles from older versions are ignored. There are no manual local players, and
+nothing but match history syncs to the cloud.
 
 ## Dependencies
 

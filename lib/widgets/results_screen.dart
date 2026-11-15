@@ -14,6 +14,9 @@ class ResultsScreen extends StatelessWidget {
     required this.standings,
     required this.winner,
     this.names,
+    this.onRematch,
+    this.rematchLabel = 'Rematch',
+    this.rematchEnabled = true,
   });
 
   /// Final total per seat, in seat order.
@@ -24,6 +27,12 @@ class ResultsScreen extends StatelessWidget {
 
   /// Resolved display name per seat; falls back to [SeatPalette.label].
   final List<String>? names;
+
+  /// Overrides the Rematch button's default of popping
+  /// [ResultsAction.rematch] (online rematches need both players to agree).
+  final VoidCallback? onRematch;
+  final String rematchLabel;
+  final bool rematchEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -83,12 +92,15 @@ class ResultsScreen extends StatelessWidget {
               const SizedBox(height: 12),
               FilledButton(
                 key: const ValueKey('rematch_button'),
-                onPressed: () =>
-                    Navigator.of(context).pop(ResultsAction.rematch),
+                onPressed: !rematchEnabled
+                    ? null
+                    : onRematch ??
+                          () =>
+                              Navigator.of(context).pop(ResultsAction.rematch),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),
                 ),
-                child: const Text('Rematch'),
+                child: Text(rematchLabel),
               ),
               const SizedBox(height: 8),
               TextButton(
