@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -214,5 +215,45 @@ void main() {
     store.gate!.complete();
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('commit_chance')), findsOneWidget);
+  });
+
+  testWidgets('tapping a score while a save is pending does nothing, '
+      'not even a haptic', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final haptics = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'HapticFeedback.vibrate') {
+          haptics.add(call.arguments as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    await pump(tester, adaUser);
+    await tester.tap(find.byKey(const ValueKey('roll_button')));
+    await tester.pumpAndSettle();
+
+    store.gate = Completer<void>();
+    await tester.tap(find.byKey(const ValueKey('die_0')));
+    await tester.pump();
+    expect(haptics, contains('HapticFeedbackType.selectionClick'));
+    haptics.clear();
+    await tester.tap(find.byKey(const ValueKey('commit_chance')));
+    await tester.pump();
+
+    expect(haptics, isNot(contains('HapticFeedbackType.lightImpact')));
+    expect((await store.get(id))!.game().round, 1);
+
+    store.gate!.complete();
+    await tester.pumpAndSettle();
   });
 }

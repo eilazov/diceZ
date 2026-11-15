@@ -97,9 +97,10 @@ routing package.
 `shared_preferences` only — a single JSON key (`dice_zee.history`) holding a list
 of `GameResult`. `loadHistory` silently drops entries it can't parse, so a schema
 change doesn't need a migration for this personal app. Statistics are derived from
-that list, not stored separately. A second key (`dice_zee.players`) only ever holds the
-signed-in account's profile (offline seat 1 + its statistics row); there are no manual
-local players, and nothing but match history syncs to the cloud.
+that list, not stored separately. A second key (`dice_zee.players`) is used only for the
+signed-in account's profile (offline seat 1 + its statistics row); leftover manual
+profiles from older versions are ignored. There are no manual local players, and
+nothing but match history syncs to the cloud.
 
 ## Dependencies
 

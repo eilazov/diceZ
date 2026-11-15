@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -36,6 +37,17 @@ Future<void> pump(
     ),
   );
   await tester.pumpAndSettle();
+}
+
+/// Friend lists only arrive once [gate] completes.
+class _SlowFriendStore extends InMemoryFriendStore {
+  Completer<void>? gate;
+
+  @override
+  Future<List<FriendProfile>> friends(String uid) async {
+    await gate?.future;
+    return super.friends(uid);
+  }
 }
 
 void main() {
@@ -126,6 +138,25 @@ void main() {
       expect(bobs.single.mode, GameMode.extended);
       expect(bobs.single.names, ['Ada', 'Bob']);
       expect(find.text('Challenge sent to Bob.'), findsOneWidget);
+    });
+
+    testWidgets('tapping New game twice opens one friend picker', (
+      tester,
+    ) async {
+      final slow = _SlowFriendStore();
+      friends = FriendService(slow, random: Random(5));
+      await befriend();
+      slow.gate = Completer<void>();
+      await pump(tester, service, adaUser, friendService: friends);
+
+      await tester.tap(find.byKey(const ValueKey('new_game_button')));
+      await tester.pump();
+      await tester.tap(find.byKey(const ValueKey('new_game_button')));
+      await tester.pump();
+      slow.gate!.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bob'), findsOneWidget);
     });
 
     testWidgets('new game without friends points to Friends', (tester) async {

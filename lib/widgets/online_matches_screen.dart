@@ -78,7 +78,9 @@ class _OnlineMatchesScreenState extends State<OnlineMatchesScreen> {
     ),
   );
 
-  Future<void> _newGame() => _guard(() async {
+  bool _starting = false;
+
+  Future<void> _startNewGame() => _guard(() async {
     final uid = widget.user.uid;
     final me = await _friends.myProfile(uid, accountDisplayName(widget.user));
     final friends = (await _friends.load(uid)).friends;
@@ -126,6 +128,18 @@ class _OnlineMatchesScreenState extends State<OnlineMatchesScreen> {
     );
   });
 
+  /// One New game flow at a time: a second tap while the friend list loads
+  /// (or the picker is open) must not stack another picker.
+  Future<void> _newGame() async {
+    if (_starting) return;
+    setState(() => _starting = true);
+    try {
+      await _startNewGame();
+    } finally {
+      if (mounted) setState(() => _starting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final uid = widget.user.uid;
@@ -143,7 +157,7 @@ class _OnlineMatchesScreenState extends State<OnlineMatchesScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         key: const ValueKey('new_game_button'),
-        onPressed: _newGame,
+        onPressed: _starting ? null : _newGame,
         icon: const Icon(Icons.add),
         label: const Text('New game'),
       ),

@@ -53,8 +53,8 @@ class _AccountScreenState extends State<AccountScreen> {
     super.dispose();
   }
 
-  /// Signed-in accounts appear in Players (playing as themselves); signing
-  /// out removes the entry again.
+  /// Signed-in accounts get a local profile (seat 1 offline, own statistics
+  /// row); signing out removes it again.
   Future<void> _syncProfile(AccountUser? user) {
     if (user == null) return widget.playerStorage.removeAccountProfile();
     final name = user.displayName?.trim();
