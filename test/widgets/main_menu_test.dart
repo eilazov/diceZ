@@ -10,7 +10,6 @@ import 'package:dice_zee/services/game_storage.dart';
 import 'package:dice_zee/widgets/account_screen.dart';
 import 'package:dice_zee/widgets/main_menu.dart';
 import 'package:dice_zee/widgets/play_menu_screen.dart';
-import 'package:dice_zee/widgets/players_screen.dart';
 import 'package:dice_zee/widgets/statistics_screen.dart';
 
 void main() {
@@ -51,14 +50,11 @@ void main() {
     expect(find.byType(StatisticsScreen), findsOneWidget);
   });
 
-  testWidgets('the players button opens the players screen', (tester) async {
+  testWidgets('there is no Players entry any more', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Players'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(PlayersScreen), findsOneWidget);
+    expect(find.text('Players'), findsNothing);
   });
 
   testWidgets('shows the best game per mode that has been played', (

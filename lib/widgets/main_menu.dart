@@ -11,11 +11,10 @@ import '../services/sync_service.dart';
 import 'account_screen.dart';
 import 'pip_face.dart';
 import 'play_menu_screen.dart';
-import 'players_screen.dart';
 import 'statistics_screen.dart';
 import 'version_indicator.dart';
 
-/// App home: play, view statistics, manage players, or open the account.
+/// App home: play, view statistics, or open the account.
 class MainMenuScreen extends StatefulWidget {
   const MainMenuScreen({
     super.key,
@@ -65,11 +64,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   void _openStatistics() {
     Navigator.of(context)
         .push(MaterialPageRoute(builder: (_) => const StatisticsScreen()));
-  }
-
-  void _openPlayers() {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const PlayersScreen()));
   }
 
   void _openAccount() {
@@ -128,12 +122,6 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     onPressed: _openStatistics,
                     icon: const Icon(Icons.bar_chart),
                     label: const Text('Statistics'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: _openPlayers,
-                    icon: const Icon(Icons.people_outline),
-                    label: const Text('Players'),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
