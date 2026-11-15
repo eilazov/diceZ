@@ -23,4 +23,7 @@ abstract class FriendStore {
   Future<void> decline(String myUid, String fromUid);
   Future<void> cancel(String myUid, String toUid);
   Future<void> remove(String myUid, String friendUid);
+
+  /// Deletes the account's public profile and its friend-code claim.
+  Future<void> deleteProfile(String uid);
 }

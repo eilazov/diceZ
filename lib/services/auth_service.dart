@@ -56,6 +56,10 @@ abstract class AuthService {
   Future<void> signInWithGoogle();
   Future<void> signInWithApple();
   Future<void> signOut();
+
+  /// Deletes the signed-in account. [cleanup] removes its server-side data
+  /// first, while it can still be authorised. Throws [AuthFailure].
+  Future<void> deleteAccount(Future<void> Function(String uid) cleanup);
 }
 
 /// Optional extra on an [AuthService]: sign in as a fixed [TestUser] without a
@@ -123,6 +127,42 @@ class FirebaseAuthService implements AuthService, EmailSignIn {
 
   @override
   Future<void> signOut() => _auth.signOut();
+
+  @override
+  Future<void> deleteAccount(Future<void> Function(String uid) cleanup) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    try {
+      await _reauthenticate(user);
+      await cleanup(user.uid);
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      final failure = AuthFailure.fromCode(e.code);
+      throw failure.cancelled
+          ? failure
+          : const AuthFailure('Could not delete your account. Try again.');
+    } catch (_) {
+      throw const AuthFailure('Could not delete your account. Try again.');
+    }
+  }
+
+  /// Deleting is sensitive, so confirm it is really the owner by signing in
+  /// with their provider again. Accounts without one (emulator test users,
+  /// who just signed in) skip this.
+  Future<void> _reauthenticate(User user) async {
+    final providerId = user.providerData.firstOrNull?.providerId;
+    final AuthProvider? provider = switch (providerId) {
+      'google.com' => GoogleAuthProvider(),
+      'apple.com' => AppleAuthProvider(),
+      _ => null,
+    };
+    if (provider == null) return;
+    if (kIsWeb) {
+      await user.reauthenticateWithPopup(provider);
+    } else {
+      await user.reauthenticateWithProvider(provider);
+    }
+  }
 
   Future<void> _signIn(AuthProvider provider) async {
     try {

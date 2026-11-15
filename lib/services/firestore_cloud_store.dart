@@ -44,6 +44,16 @@ class FirestoreCloudStore implements CloudStore {
     await batch.commit();
   }
 
+  @override
+  Future<void> deleteAllMatches() async {
+    final snapshot = await _matches.get();
+    final batch = _db.batch();
+    for (final doc in snapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
   static String matchId(GameResult match) =>
       match.playedAt.toUtc().microsecondsSinceEpoch.toString();
 }

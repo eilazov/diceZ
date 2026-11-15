@@ -22,6 +22,9 @@ class FakeCloudStore implements CloudStore {
   }
 
   @override
+  Future<void> deleteAllMatches() async => matches.clear();
+
+  @override
   Future<void> saveMatches(List<GameResult> value) async {
     for (final m in value) {
       matches.removeWhere((e) => e.playedAt == m.playedAt);
@@ -42,6 +45,9 @@ class FakeAuth implements AuthService {
   Future<void> signInWithGoogle() async {}
   @override
   Future<void> signInWithApple() async {}
+  @override
+  Future<void> deleteAccount(Future<void> Function(String uid) cleanup) async {}
+
   @override
   Future<void> signOut() async {}
 }

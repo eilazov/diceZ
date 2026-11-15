@@ -87,4 +87,20 @@ class FriendService {
       _store.cancel(myUid, toUid);
   Future<void> remove(String myUid, String friendUid) =>
       _store.remove(myUid, friendUid);
+
+  /// Account deletion: drop every friendship and request (on both sides), then
+  /// the profile and its code.
+  Future<void> deleteAccountData(String uid) async {
+    final overview = await load(uid);
+    for (final f in overview.friends) {
+      await _store.remove(uid, f.uid);
+    }
+    for (final p in overview.incoming) {
+      await _store.decline(uid, p.uid);
+    }
+    for (final p in overview.outgoing) {
+      await _store.cancel(uid, p.uid);
+    }
+    await _store.deleteProfile(uid);
+  }
 }

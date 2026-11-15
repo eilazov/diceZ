@@ -57,6 +57,15 @@ class FakeAuthService implements AuthService {
   Future<void> signInWithApple() => _signIn('apple');
 
   @override
+  Future<void> deleteAccount(Future<void> Function(String uid) cleanup) async {
+    calls.add('delete');
+    if (failWith != null) throw failWith!;
+    await cleanup(user!.uid);
+    user = null;
+    if (emitEvents) _controller.add(null);
+  }
+
+  @override
   Future<void> signOut() async {
     calls.add('signOut');
     user = null;
@@ -301,5 +310,78 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sign out'), findsOneWidget);
+  });
+
+  group('delete account', () {
+    const signedIn = AccountUser(uid: 'u1', displayName: 'Ada', email: 'a@b.c');
+
+    Future<List<String>> pumpSignedIn(
+      WidgetTester tester,
+      FakeAuthService auth,
+    ) async {
+      final deleted = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AccountScreen(
+            authService: auth,
+            friendService: FriendService(
+              InMemoryFriendStore(),
+              random: Random(2),
+            ),
+            deleteData: (uid) async => deleted.add(uid),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return deleted;
+    }
+
+    testWidgets('asks for confirmation and does nothing on Cancel', (
+      tester,
+    ) async {
+      final auth = FakeAuthService(user: signedIn);
+      final deleted = await pumpSignedIn(tester, auth);
+
+      await tester.tap(find.text('Delete account'));
+      await tester.pumpAndSettle();
+      expect(find.text('Delete account?'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(auth.calls, isEmpty);
+      expect(deleted, isEmpty);
+      expect(find.text('Sign out'), findsOneWidget);
+    });
+
+    testWidgets('deletes the data and the account once confirmed', (
+      tester,
+    ) async {
+      final auth = FakeAuthService(user: signedIn);
+      final deleted = await pumpSignedIn(tester, auth);
+
+      await tester.tap(find.text('Delete account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(auth.calls, ['delete']);
+      expect(deleted, ['u1']);
+      expect(find.text('Sign in with Google'), findsOneWidget);
+    });
+
+    testWidgets('a failure keeps the account and says why', (tester) async {
+      final auth = FakeAuthService(user: signedIn)
+        ..failWith = const AuthFailure('Could not delete your account.');
+      await pumpSignedIn(tester, auth);
+
+      await tester.tap(find.text('Delete account'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Could not delete your account.'), findsOneWidget);
+      expect(find.text('Sign out'), findsOneWidget);
+    });
   });
 }

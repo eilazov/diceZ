@@ -4,10 +4,15 @@ import 'package:flutter/material.dart';
 
 import '../app_config.dart';
 import '../models/friend_profile.dart';
+import '../services/account_cleanup.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_cloud_store.dart';
+import '../services/firestore_online_match_store.dart';
+import '../services/online_match_service.dart';
 import '../services/firestore_friend_store.dart';
 import '../services/friend_service.dart';
 import '../services/player_storage.dart';
+import 'confirm_dialog.dart';
 import 'friend_code_tile.dart';
 import 'friends_screen.dart';
 
@@ -20,6 +25,7 @@ class AccountScreen extends StatefulWidget {
     this.playerStorage = const PlayerStorage(),
     this.friendService,
     this.testUsers = AppConfig.testUsers,
+    this.deleteData,
   });
 
   /// Defaults to a Firestore-backed [FriendService]; injectable for tests.
@@ -29,6 +35,10 @@ class AccountScreen extends StatefulWidget {
 
   /// Emulator-only quick sign-ins; empty (so hidden) in normal runs.
   final List<TestUser> testUsers;
+
+  /// Removes the account's server-side data before it is deleted. Defaults to
+  /// the Firestore-backed [AccountCleanup]; injectable for tests.
+  final Future<void> Function(String uid)? deleteData;
 
   /// Defaults to [FirebaseAuthService]; injectable for tests.
   final AuthService? authService;
@@ -103,6 +113,28 @@ class _AccountScreenState extends State<AccountScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _deleteData(String uid) =>
+      (widget.deleteData ??
+      AccountCleanup(
+        widget.friendService ?? FriendService(FirestoreFriendStore()),
+        OnlineMatchService(FirestoreOnlineMatchStore()),
+        FirestoreCloudStore.new,
+      ).run)(uid);
+
+  Future<void> _deleteAccount() async {
+    final confirmed = await confirmAction(
+      context,
+      title: 'Delete account?',
+      message:
+          'This permanently deletes your account, friends, friend code, '
+          'online games and cloud-synced results. Match history on this '
+          'device is kept. This cannot be undone.',
+      confirmLabel: 'Delete',
+    );
+    if (!confirmed || !mounted) return;
+    await _run(() => _auth.deleteAccount(_deleteData));
   }
 
   @override
@@ -243,6 +275,22 @@ class _AccountScreenState extends State<AccountScreen> {
         OutlinedButton(
           onPressed: _busy ? null : () => _run(_auth.signOut),
           child: const Text('Sign out'),
+        ),
+        if (_error != null) ...[
+          const SizedBox(height: 16),
+          Text(
+            _error!,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: _busy ? null : _deleteAccount,
+          style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+          child: const Text('Delete account'),
         ),
       ],
     );

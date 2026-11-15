@@ -186,5 +186,8 @@ class _SignedOutAuth implements AuthService {
   @override
   Future<void> signInWithApple() async {}
   @override
+  Future<void> deleteAccount(Future<void> Function(String uid) cleanup) async {}
+
+  @override
   Future<void> signOut() async {}
 }

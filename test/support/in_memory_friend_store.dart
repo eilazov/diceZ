@@ -81,4 +81,7 @@ class InMemoryFriendStore implements FriendStore {
     _m(_friends, myUid).remove(friendUid);
     _m(_friends, friendUid).remove(myUid);
   }
+
+  @override
+  Future<void> deleteProfile(String uid) async => profiles.remove(uid);
 }

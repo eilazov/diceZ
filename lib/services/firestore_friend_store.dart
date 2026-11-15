@@ -124,4 +124,11 @@ class FirestoreFriendStore implements FriendStore {
     await _sub(myUid, 'friends').doc(friendUid).delete();
     await _sub(friendUid, 'friends').doc(myUid).delete();
   }
+
+  @override
+  Future<void> deleteProfile(String uid) async {
+    final code = (await _user(uid).get()).data()?['friendCode'] as String?;
+    if (code != null) await _db.collection('friendCodes').doc(code).delete();
+    await _user(uid).delete();
+  }
 }

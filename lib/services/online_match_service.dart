@@ -93,4 +93,11 @@ class OnlineMatchService {
       ],
     );
   }
+
+  /// Account deletion: removes every match [uid] plays in.
+  Future<void> deleteAllFor(String uid) async {
+    for (final m in await _store.watchFor(uid).first) {
+      await _store.delete(m.id);
+    }
+  }
 }
