@@ -102,6 +102,21 @@ void main() {
     expect(find.byKey(const ValueKey('rules_standard')), findsOneWidget);
   });
 
+  testWidgets('mode labels fit on one line, selected or not', (tester) async {
+    _tall(tester);
+    await tester.pumpWidget(const MaterialApp(home: PlayMenuScreen()));
+    await tester.pumpAndSettle();
+
+    final lineHeight = tester.getSize(find.text('Combined')).height;
+    for (final label in ['Standard', 'Extended', 'Combined']) {
+      expect(
+        tester.getSize(find.text(label)).height,
+        lineHeight,
+        reason: label,
+      );
+    }
+  });
+
   testWidgets('switching mode swaps the rules summary', (tester) async {
     _tall(tester);
     await tester.pumpWidget(const MaterialApp(home: PlayMenuScreen()));

@@ -81,6 +81,7 @@ class _PlayMenuScreenState extends State<PlayMenuScreen> {
                     Center(
                       child: SegmentedButton<GameMode>(
                         key: const ValueKey('mode_selector'),
+                        showSelectedIcon: false,
                         segments: [
                           for (final mode in GameMode.values)
                             ButtonSegment(value: mode, label: Text(mode.label)),
