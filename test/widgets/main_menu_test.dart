@@ -34,7 +34,8 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: MainMenuScreen()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Play'), findsOneWidget);
+    expect(find.text('Offline Game'), findsOneWidget);
+    expect(find.text('Online Game'), findsOneWidget);
     expect(find.text('Start'), findsNothing);
     expect(find.byType(SegmentedButton<int>), findsNothing);
   });

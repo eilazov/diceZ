@@ -57,6 +57,7 @@ void main() {
   testWidgets('signed out: asks to sign in and opens Account', (tester) async {
     await pump(tester, _Auth());
 
+    expect(find.text('Online Game'), findsOneWidget);
     expect(find.text('Sign in to play online with friends'), findsOneWidget);
     expect(find.byType(OnlineMatchesScreen), findsNothing);
 
@@ -70,6 +71,7 @@ void main() {
     await pump(tester, _Auth(user: _ada));
 
     expect(find.byType(OnlineMatchesScreen), findsOneWidget);
+    expect(find.text('Online Game'), findsOneWidget);
     expect(find.byKey(const ValueKey('new_game_button')), findsOneWidget);
   });
 

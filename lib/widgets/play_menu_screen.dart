@@ -42,7 +42,7 @@ class _PlayMenuScreenState extends State<PlayMenuScreen> {
     final muted = theme.colorScheme.onSurfaceVariant;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Play')),
+      appBar: AppBar(title: const Text('Offline Game')),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

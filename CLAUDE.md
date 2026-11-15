@@ -41,7 +41,7 @@ lib/
     game_storage.dart   shared_preferences wrapper: saveResult / loadHistory
                        (skips unparseable legacy entries).
   widgets/
-    main_menu.dart       MainMenuScreen: Play, Online, Statistics, Account.
+    main_menu.dart       MainMenuScreen: Offline Game, Online Game, Statistics, Account.
     game_screen.dart     StatefulWidget; owns DiceGame; turn banner, dice, Roll,
                        shared ScoreTable, end-of-match summary + save.
     dice_row.dart        the 5 dice; tap to hold; roll animation.

@@ -19,6 +19,19 @@ void main() {
 
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  testWidgets('the screen is titled Offline Game', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: PlayMenuScreen()));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text('Offline Game'),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('offers a 2, 3 and 4 player choice', (tester) async {
     _tall(tester);
     await tester.pumpWidget(const MaterialApp(home: PlayMenuScreen()));

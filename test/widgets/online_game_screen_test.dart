@@ -296,4 +296,16 @@ void main() {
     store.gate!.complete();
     await tester.pumpAndSettle();
   });
+
+  testWidgets("the opponent's rolls left are counted on the Roll button", (
+    tester,
+  ) async {
+    await pump(tester, bobUser);
+    expect(find.text('Roll · 3 left'), findsOneWidget);
+
+    await adaRolls(Random(2));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Roll · 2 left'), findsOneWidget);
+  });
 }

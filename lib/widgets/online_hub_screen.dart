@@ -48,7 +48,7 @@ class _OnlineHubScreenState extends State<OnlineHubScreen> {
           );
         }
         return Scaffold(
-          appBar: AppBar(title: const Text('Online games')),
+          appBar: AppBar(title: const Text('Online Game')),
           body: SafeArea(
             child: Center(
               child: Padding(

@@ -145,7 +145,7 @@ class _OnlineMatchesScreenState extends State<OnlineMatchesScreen> {
     final uid = widget.user.uid;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Online games'),
+        title: const Text('Online Game'),
         actions: [
           IconButton(
             key: const ValueKey('friends_action'),

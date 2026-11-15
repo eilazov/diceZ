@@ -125,14 +125,14 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(52),
                     ),
-                    child: const Text('Play'),
+                    child: const Text('Offline Game'),
                   ),
                   const SizedBox(height: 16),
                   FilledButton.tonalIcon(
                     key: const ValueKey('online_button'),
                     onPressed: _openOnline,
                     icon: const Icon(Icons.casino),
-                    label: const Text('Online'),
+                    label: const Text('Online Game'),
                     style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(52),
                     ),

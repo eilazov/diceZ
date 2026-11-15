@@ -11,7 +11,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MainMenuScreen), findsOneWidget);
-    expect(find.text('Play'), findsOneWidget);
+    expect(find.text('Offline Game'), findsOneWidget);
+    expect(find.text('Online Game'), findsOneWidget);
     expect(find.text('Statistics'), findsOneWidget);
   });
 }
