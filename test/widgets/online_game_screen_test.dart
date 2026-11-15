@@ -308,4 +308,73 @@ void main() {
 
     expect(find.text('Roll · 2 left'), findsOneWidget);
   });
+
+  group('rematch', () {
+    /// Plays the whole match out from outside the widget.
+    Future<void> finishMatch() async {
+      var m = (await store.get(id))!;
+      final game = m.game(random: Random(1));
+      final cats = GameMode.standard.categories;
+      for (var i = 0; i < cats.length * 2; i++) {
+        game.roll();
+        final mover = game.currentPlayer == 0 ? 'a' : 'b';
+        game.commitScore(cats[i ~/ 2]);
+        m = await service.saveTurn(m, mover, game);
+      }
+    }
+
+    testWidgets('asking for a rematch records the vote and waits', (
+      tester,
+    ) async {
+      await finishMatch();
+      await pump(tester, adaUser);
+
+      await tester.tap(find.byKey(const ValueKey('rematch_button')));
+      await tester.pumpAndSettle();
+
+      expect((await store.get(id))!.rematch, ['a']);
+      expect(find.text('Waiting for Bob…'), findsOneWidget);
+      final button = tester.widget<FilledButton>(
+        find.byKey(const ValueKey('rematch_button')),
+      );
+      expect(button.onPressed, isNull);
+    });
+
+    testWidgets('the second player to agree starts the new game for them', (
+      tester,
+    ) async {
+      await finishMatch();
+      await service.voteRematch((await store.get(id))!, 'a');
+      await pump(tester, bobUser);
+      expect(find.text('Rematch · Ada is ready'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('rematch_button')));
+      await tester.pumpAndSettle();
+
+      expect(store.matches.length, 2);
+      final next = store.matches.values.firstWhere((m) => m.id != id);
+      expect(next.players, ['b', 'a']);
+      expect(find.text('vs Ada'), findsOneWidget);
+      expect(find.text('Your turn'), findsOneWidget);
+    });
+
+    testWidgets('the waiting player is taken into the new game', (
+      tester,
+    ) async {
+      await finishMatch();
+      await pump(tester, adaUser);
+      await tester.tap(find.byKey(const ValueKey('rematch_button')));
+      await tester.pumpAndSettle();
+      expect(find.text('Waiting for Bob…'), findsOneWidget);
+
+      // Bob agrees on his own device.
+      final done = (await store.get(id))!;
+      await service.voteRematch(done, 'b');
+      await service.startRematchIfReady((await store.get(id))!, 'b');
+      await tester.pumpAndSettle();
+
+      expect(find.text('vs Bob'), findsOneWidget);
+      expect(find.text("Bob's turn"), findsOneWidget);
+    });
+  });
 }

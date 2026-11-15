@@ -53,5 +53,15 @@ class FirestoreOnlineMatchStore implements OnlineMatchStore {
       _matches.doc(match.id).set(match.toJson());
 
   @override
+  Future<void> addRematchVote(String id, String uid) =>
+      _matches.doc(id).update({
+        'rematch': FieldValue.arrayUnion([uid]),
+      });
+
+  @override
+  Future<void> setRematchMatch(String id, String newMatchId) =>
+      _matches.doc(id).update({'rematchMatchId': newMatchId});
+
+  @override
   Future<void> delete(String id) => _matches.doc(id).delete();
 }

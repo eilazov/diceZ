@@ -15,7 +15,7 @@ import '../services/online_match_service.dart';
 import '../services/player_storage.dart';
 import 'dice_zee_celebration.dart';
 import 'game_controls.dart';
-import 'results_screen.dart';
+import 'online_results_screen.dart';
 import 'score_table.dart';
 
 /// One online match. Renders whatever the shared document says; the controls
@@ -135,18 +135,34 @@ class _OnlineGameScreenState extends State<OnlineGameScreen> {
     }
     if (!mounted) return;
     AppHaptics.gameOver();
-    final game = match.game();
-    await Navigator.of(context).push<ResultsAction>(
+    final next = await Navigator.of(context).push<Object?>(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => ResultsScreen(
-          standings: game.standings,
-          winner: game.winner,
-          names: match.names,
+        builder: (_) => OnlineResultsScreen(
+          match: match,
+          uid: widget.user.uid,
+          service: _service,
         ),
       ),
     );
-    if (mounted) Navigator.of(context).pop();
+    if (!mounted) return;
+    if (next is String) {
+      // Both players asked for a rematch: continue straight into it.
+      await Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (_) => OnlineGameScreen(
+            user: widget.user,
+            matchId: next,
+            service: widget.service,
+            storage: widget.storage,
+            playerStorage: widget.playerStorage,
+            random: widget.random,
+          ),
+        ),
+      );
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
   @override

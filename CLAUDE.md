@@ -78,7 +78,10 @@ holds a `DiceGame` JSON snapshot (`DiceGame.toJson/fromJson`); `OnlineMatchServi
 main menu's Online button -> `OnlineHubScreen` (sign-in prompt or
 `OnlineMatchesScreen`: invites, active matches, New game -> pick friend + mode,
 Friends action); play in `OnlineGameScreen` (shares `TurnHeader`/`ControlDeck` with `GameScreen`). The
-active player's device rolls — no anti-cheat, no push. Design:
+active player's device rolls — no anti-cheat, no push. Rematch: on the results
+screen each player votes (`rematch` uid list, `arrayUnion`); the old seat 1's device
+creates the new active match (seats swapped) and links it via `rematchMatchId`, and
+both screens move into it (`OnlineResultsScreen`). Design:
 `docs/superpowers/specs/2026-10-28-online-friend-games-design.md`. Rules in
 `firestore.rules` must be republished by hand.
 
@@ -99,6 +102,15 @@ builds, so the test-user buttons can never ship. On Android emulators add
 in as Ada) and `http://127.0.0.1:8087` (Bob) — different origins keep separate
 sign-ins. Account -> "Test user Ada/Bob", then friend code -> Friends -> challenge.
 `lib/app_config.dart` holds the flags and test users.
+
+## Account deletion
+
+Account -> Delete account (confirm dialog). `AuthService.deleteAccount(cleanup)`
+re-authenticates with the provider (Google/Apple; skipped for emulator test users),
+runs `AccountCleanup` (friends + requests on both sides, friend code + profile, the
+account's `liveMatches`, `users/{uid}/matches`), then deletes the Firebase user. Local
+match history stays on the device. `firestore.rules` gained `allow delete` on
+`friendCodes` for the owner and must be republished by hand.
 
 ## State management & navigation
 

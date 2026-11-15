@@ -110,4 +110,79 @@ void main() {
     expect(copy.mode, m.mode);
     expect(copy.state, m.state);
   });
+
+  group('rematch', () {
+    Future<OnlineMatch> finished() async {
+      final m = await active();
+      final done = m.copyWith(
+        status: OnlineMatchStatus.finished,
+        finishedAt: DateTime.now(),
+      );
+      await store.update(done);
+      return done;
+    }
+
+    test('a vote is recorded once per player', () async {
+      final m = await finished();
+
+      await service.voteRematch(m, 'a');
+      await service.voteRematch(m, 'a');
+
+      expect((await store.get(m.id))!.rematch, ['a']);
+    });
+
+    test('only players of a finished match can vote', () async {
+      final live = await active();
+      expect(() => service.voteRematch(live, 'a'), throwsStateError);
+      final m = await finished();
+      expect(() => service.voteRematch(m, 'z'), throwsStateError);
+    });
+
+    test('nothing starts until both have voted', () async {
+      final m = await finished();
+      await service.voteRematch(m, 'a');
+
+      final id = await service.startRematchIfReady(
+        (await store.get(m.id))!,
+        'b',
+      );
+
+      expect(id, isNull);
+    });
+
+    test('once both voted, the new seat 0 starts an active match with the '
+        'seats swapped', () async {
+      final m = await finished();
+      await service.voteRematch(m, 'a');
+      await service.voteRematch(m, 'b');
+      final ready = (await store.get(m.id))!;
+
+      expect(await service.startRematchIfReady(ready, 'a'), isNull);
+      final newId = await service.startRematchIfReady(ready, 'b');
+
+      final next = (await store.get(newId!))!;
+      expect(next.status, OnlineMatchStatus.active);
+      expect(next.players, ['b', 'a']);
+      expect(next.names, ['Bob', 'Ada']);
+      expect(next.mode, m.mode);
+      expect(next.game().round, 1);
+      expect((await store.get(m.id))!.rematchMatchId, newId);
+    });
+
+    test('a started rematch is not started twice', () async {
+      final m = await finished();
+      await service.voteRematch(m, 'a');
+      await service.voteRematch(m, 'b');
+      final ready = (await store.get(m.id))!;
+      await service.startRematchIfReady(ready, 'b');
+
+      final again = await service.startRematchIfReady(
+        (await store.get(m.id))!,
+        'b',
+      );
+
+      expect(again, isNull);
+      expect(store.matches.length, 2);
+    });
+  });
 }
