@@ -6,6 +6,7 @@ only — no App Store / Play Store release.
 Design specs (newest last):
 - [docs/superpowers/specs/2026-09-07-dice-zee-design.md](docs/superpowers/specs/2026-09-07-dice-zee-design.md) — core single-player game
 - [docs/superpowers/specs/2026-09-07-multiplayer-and-menu-design.md](docs/superpowers/specs/2026-09-07-multiplayer-and-menu-design.md) — 2–4 players, menu, statistics
+- [docs/superpowers/specs/2026-11-15-online-hub-and-menu-rework-design.md](docs/superpowers/specs/2026-11-15-online-hub-and-menu-rework-design.md) — Online hub on the main menu; local player profiles removed
 
 ## Gameplay
 
@@ -40,7 +41,7 @@ lib/
     game_storage.dart   shared_preferences wrapper: saveResult / loadHistory
                        (skips unparseable legacy entries).
   widgets/
-    main_menu.dart       MainMenuScreen: 2/3/4-player buttons + Statistics.
+    main_menu.dart       MainMenuScreen: Play, Online, Statistics, Account.
     game_screen.dart     StatefulWidget; owns DiceGame; turn banner, dice, Roll,
                        shared ScoreTable, end-of-match summary + save.
     dice_row.dart        the 5 dice; tap to hold; roll animation.
@@ -73,9 +74,10 @@ deployed/merged by hand).
 
 Two friends play one match from two phones, asynchronously. `liveMatches/{id}`
 holds a `DiceGame` JSON snapshot (`DiceGame.toJson/fromJson`); `OnlineMatchService`
-(over `OnlineMatchStore`) enforces who may accept / save a turn. Challenge from
-`FriendsScreen`; invites and active matches in `OnlineMatchesScreen`; play in
-`OnlineGameScreen` (shares `TurnHeader`/`ControlDeck` with `GameScreen`). The
+(over `OnlineMatchStore`) enforces who may accept / save a turn. Entry is the
+main menu's Online button -> `OnlineHubScreen` (sign-in prompt or
+`OnlineMatchesScreen`: invites, active matches, New game -> pick friend + mode,
+Friends action); play in `OnlineGameScreen` (shares `TurnHeader`/`ControlDeck` with `GameScreen`). The
 active player's device rolls — no anti-cheat, no push. Design:
 `docs/superpowers/specs/2026-10-28-online-friend-games-design.md`. Rules in
 `firestore.rules` must be republished by hand.
@@ -95,7 +97,9 @@ routing package.
 `shared_preferences` only — a single JSON key (`dice_zee.history`) holding a list
 of `GameResult`. `loadHistory` silently drops entries it can't parse, so a schema
 change doesn't need a migration for this personal app. Statistics are derived from
-that list, not stored separately.
+that list, not stored separately. A second key (`dice_zee.players`) only ever holds the
+signed-in account's profile (offline seat 1 + its statistics row); there are no manual
+local players, and nothing but match history syncs to the cloud.
 
 ## Dependencies
 
