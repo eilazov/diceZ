@@ -82,6 +82,24 @@ active player's device rolls — no anti-cheat, no push. Design:
 `docs/superpowers/specs/2026-10-28-online-friend-games-design.md`. Rules in
 `firestore.rules` must be republished by hand.
 
+### Testing online games locally (Firebase emulators)
+
+Two players are needed, and Google sign-in can't be scripted, so dev builds can run
+against the Auth + Firestore emulators with two fixed test users (Ada, Bob). Nothing
+touches the real project; emulator data is lost when the emulators stop.
+
+```bash
+firebase emulators:start --only auth,firestore --project demo-dicez
+flutter build web --profile --dart-define=USE_EMULATOR=true   # serve build/web
+```
+
+Use `--profile` (or `flutter run`): `AppConfig.useEmulator` is forced off in release
+builds, so the test-user buttons can never ship. On Android emulators add
+`--dart-define=EMULATOR_HOST=10.0.2.2`. Open the app on `http://localhost:8087` (sign
+in as Ada) and `http://127.0.0.1:8087` (Bob) — different origins keep separate
+sign-ins. Account -> "Test user Ada/Bob", then friend code -> Friends -> challenge.
+`lib/app_config.dart` holds the flags and test users.
+
 ## State management & navigation
 
 Plain `StatefulWidget` + `setState`. `GameScreen` holds one `DiceGame` and rebuilds

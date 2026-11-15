@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../app_config.dart';
 import '../models/friend_profile.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_friend_store.dart';
@@ -18,12 +19,16 @@ class AccountScreen extends StatefulWidget {
     this.authService,
     this.playerStorage = const PlayerStorage(),
     this.friendService,
+    this.testUsers = AppConfig.testUsers,
   });
 
   /// Defaults to a Firestore-backed [FriendService]; injectable for tests.
   final FriendService? friendService;
 
   final PlayerStorage playerStorage;
+
+  /// Emulator-only quick sign-ins; empty (so hidden) in normal runs.
+  final List<TestUser> testUsers;
 
   /// Defaults to [FirebaseAuthService]; injectable for tests.
   final AuthService? authService;
@@ -34,6 +39,7 @@ class AccountScreen extends StatefulWidget {
 
 class _AccountScreenState extends State<AccountScreen> {
   late final AuthService _auth = widget.authService ?? FirebaseAuthService();
+  late final Stream<AccountUser?> _authChanges = _auth.authStateChanges();
   StreamSubscription<AccountUser?>? _authSub;
   bool _busy = false;
   String? _error;
@@ -44,7 +50,7 @@ class _AccountScreenState extends State<AccountScreen> {
   void initState() {
     super.initState();
     _syncProfile(_auth.currentUser);
-    _authSub = _auth.authStateChanges().listen(_syncProfile);
+    _authSub = _authChanges.listen(_syncProfile);
   }
 
   @override
@@ -110,10 +116,11 @@ class _AccountScreenState extends State<AccountScreen> {
             child: Padding(
               padding: const EdgeInsets.all(24),
               child: StreamBuilder<AccountUser?>(
-                stream: _auth.authStateChanges(),
-                initialData: _auth.currentUser,
+                stream: _authChanges,
                 builder: (context, snapshot) {
-                  final user = snapshot.data;
+                  // The stream only triggers rebuilds; some platforms miss its
+                  // events, so the current user is always read directly.
+                  final user = _auth.currentUser;
                   return user == null
                       ? _signedOut(context)
                       : _signedIn(context, user);
@@ -168,6 +175,17 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
           ),
         ],
+        if (_auth case final EmailSignIn emailAuth)
+          for (final testUser in widget.testUsers) ...[
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _busy
+                  ? null
+                  : () => _run(() => emailAuth.signInWithEmail(testUser)),
+              icon: const Icon(Icons.bug_report_outlined),
+              label: Text('Test user ${testUser.name}'),
+            ),
+          ],
         const SizedBox(height: 16),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

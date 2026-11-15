@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../app_config.dart';
+
 /// The signed-in account, stripped of Firebase types.
 class AccountUser {
   const AccountUser({required this.uid, this.displayName, this.email});
@@ -56,9 +58,15 @@ abstract class AuthService {
   Future<void> signOut();
 }
 
+/// Optional extra on an [AuthService]: sign in as a fixed [TestUser] without a
+/// provider. Only offered against the Firebase emulator (see [AppConfig]).
+abstract interface class EmailSignIn {
+  Future<void> signInWithEmail(TestUser testUser);
+}
+
 /// Firebase-backed [AuthService]. Uses Firebase's provider flow (popup on
 /// web), so no extra sign-in packages are needed.
-class FirebaseAuthService implements AuthService {
+class FirebaseAuthService implements AuthService, EmailSignIn {
   FirebaseAuthService({FirebaseAuth? auth})
     : _auth = auth ?? FirebaseAuth.instance;
 
@@ -84,6 +92,34 @@ class FirebaseAuthService implements AuthService {
 
   @override
   Future<void> signInWithApple() => _signIn(AppleAuthProvider());
+
+  /// Signs in as [testUser], creating the account first if the emulator has
+  /// never seen it. Refuses to run outside emulator mode.
+  @override
+  Future<void> signInWithEmail(TestUser testUser) async {
+    if (!AppConfig.useEmulator) {
+      throw const AuthFailure('Test sign-in is only available on emulators.');
+    }
+    try {
+      try {
+        await _auth.signInWithEmailAndPassword(
+          email: testUser.email,
+          password: testUser.password,
+        );
+      } on FirebaseAuthException catch (e) {
+        if (e.code != 'user-not-found' && e.code != 'invalid-credential') {
+          rethrow;
+        }
+        final created = await _auth.createUserWithEmailAndPassword(
+          email: testUser.email,
+          password: testUser.password,
+        );
+        await created.user?.updateDisplayName(testUser.name);
+      }
+    } on FirebaseAuthException catch (e) {
+      throw AuthFailure.fromCode(e.code);
+    }
+  }
 
   @override
   Future<void> signOut() => _auth.signOut();

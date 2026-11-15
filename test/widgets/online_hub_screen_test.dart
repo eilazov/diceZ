@@ -17,13 +17,18 @@ class _Auth implements AuthService {
 
   final controller = StreamController<AccountUser?>.broadcast();
   AccountUser? user;
+  int streamRequests = 0;
 
   @override
   bool get appleSupported => false;
   @override
   AccountUser? get currentUser => user;
   @override
-  Stream<AccountUser?> authStateChanges() => controller.stream;
+  Stream<AccountUser?> authStateChanges() {
+    streamRequests++;
+    return controller.stream;
+  }
+
   @override
   Future<void> signInWithGoogle() async {}
   @override
@@ -89,5 +94,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(OnlineMatchesScreen), findsOneWidget);
+  });
+
+  testWidgets('follows auth through one stream, not one per rebuild', (
+    tester,
+  ) async {
+    final auth = _Auth();
+    await pump(tester, auth);
+
+    auth.controller.add(_ada);
+    await tester.pumpAndSettle();
+    auth.controller.add(null);
+    await tester.pumpAndSettle();
+
+    expect(auth.streamRequests, 1);
   });
 }
